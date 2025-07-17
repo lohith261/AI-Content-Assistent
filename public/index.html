@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for a modern look -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="font-inter bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl border border-gray-200">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">
+            AI Content Assistant
+        </h1>
+        <p class="text-gray-600 mb-8 text-center">
+            Summarize content, extract action items, and get next steps using Gemini AI.
+        </p>
+
+        <div class="mb-6">
+            <label for="contentInput" class="block text-gray-700 text-sm font-semibold mb-2">
+                Enter Text or URL:
+            </label>
+            <textarea id="contentInput"
+                      class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800"
+                      rows="8"
+                      placeholder="Paste your article, email, meeting notes, or a website URL here..."></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 mb-8">
+            <button id="processBtn"
+                    class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-200 ease-in-out flex items-center justify-center">
+                <span id="buttonText">Process Content</span>
+                <svg id="loadingSpinner" class="animate-spin h-5 w-5 text-white ml-3 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+            <button id="clearBtn"
+                    class="flex-1 bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 transition duration-200 ease-in-out flex items-center justify-center">
+                <i data-lucide="x-circle" class="mr-2"></i> Clear Content
+            </button>
+        </div>
+
+
+        <div id="responseContainer" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg hidden opacity-0 transition-opacity duration-500 ease-in">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i data-lucide="file-text" class="mr-2 text-blue-600"></i> Summary
+            </h2>
+            <div id="summaryOutput" class="text-gray-700 leading-relaxed mb-6"></div>
+
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i data-lucide="check-circle" class="mr-2 text-green-600"></i> Action Items
+            </h2>
+            <ul id="actionItemsOutput" class="list-disc list-inside text-gray-700 mb-6"></ul>
+
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i data-lucide="lightbulb" class="mr-2 text-yellow-600"></i> Suggested Next Steps
+            </h2>
+            <ul id="nextStepsOutput" class="list-disc list-inside text-gray-700"></ul>
+        </div>
+
+        <div id="errorMessage" class="mt-4 text-red-600 text-center font-medium hidden"></div>
+    </div>
+
+    <script src="script.js"></script>
+    <!-- Initialize Lucide icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
