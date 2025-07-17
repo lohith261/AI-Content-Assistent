@@ -199,25 +199,24 @@ async function fetchContentFromUrl(url) {
 
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
-            const generateContentResponse = await model.generateContent({
+            // CORRECTED LINE: Use generateContentStream() for direct streaming iterable
+            const streamResult = await model.generateContentStream({ // Changed from generateContent
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
-            }, { stream: true }); // Pass { stream: true } as the second argument
+            }); // Removed { stream: true } from here as generateContentStream is used
 
-            console.log('Received generateContentResponse object:', generateContentResponse);
+            console.log('Received streamResult object:', streamResult);
 
-            // Access the stream property from the response object
-            const stream = generateContentResponse.stream;
-
-            if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
-                console.error('Gemini API did not return a valid async iterable object from .stream property.');
+            // Check if streamResult is an async iterable (which generateContentStream() should return)
+            if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
+                console.error('Gemini API did not return a valid async iterable object from generateContentStream().');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
                 return;
             }
 
-            for await (const chunk of stream) { // Iterate directly over the 'stream' variable
+            for await (const chunk of streamResult) { // Iterate directly over streamResult
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
