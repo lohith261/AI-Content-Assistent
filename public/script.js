@@ -119,7 +119,7 @@ processBtn.addEventListener('click', async () => {
         }
 
         // Make a POST request to your backend server
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com', {
+        const response = await fetch('https://ai-content-assistant-backend.onrender.com/generate-content', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
