@@ -3,7 +3,7 @@
 // Import necessary modules
 require('dotenv').config(); // Loads environment variables from .env file
 const express = require('express');
-const cors = require('cors'); // CORRECTED: Removed the extra ' = require'
+const cors = require('cors');
 const path = require('path');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 const axios = require('axios'); // For making HTTP requests to fetch URL content
@@ -130,7 +130,6 @@ async function fetchContentFromUrl(url) {
         if (image) {
             const [mimeType, base64Data] = image.split(';base64,');
             if (!mimeType || !base64Data) {
-                // If Base64 data is missing or malformed, return an error
                 res.write(`data: ${JSON.stringify({ type: 'error', content: "Invalid image data format. Please try another image." })}\n\n`);
                 res.end();
                 return;
@@ -198,27 +197,26 @@ async function fetchContentFromUrl(url) {
 
             let fullResponseText = '';
 
-            // NEW LOGGING: Log the parts array before sending to Gemini
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
+            // CORRECTED LINE: Call .stream() method to get the iterable stream
             const streamResult = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
-            }, { stream: true });
+            }); // Removed {stream: true} from here as it's part of the method call now
 
-            // NEW LOGGING: Log the streamResult object itself
             console.log('Received streamResult object:', streamResult);
 
-            // Check if streamResult or streamResult.stream is undefined/null
-            if (!streamResult || !streamResult.stream) {
-                console.error('Gemini API did not return a valid stream object or it was undefined/null.');
+            // Access the stream using .stream() method
+            if (!streamResult || typeof streamResult.stream !== 'function') { // Check if .stream is a function
+                console.error('Gemini API did not return a valid stream object or stream() method is missing.');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
-                return; // Exit the function
+                return;
             }
 
-            for await (const chunk of streamResult.stream) {
+            for await (const chunk of streamResult.stream()) { // Call the .stream() method
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
