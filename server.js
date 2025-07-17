@@ -94,7 +94,7 @@ async function fetchContentFromUrl(url) {
 
 // --- API Endpoint for Content Processing ---
 app.post('/generate-content', async (req, res) => {
-    const { text, url } = req.body;
+    const { text, url, temperature, maxOutputTokens } = req.body; // New: Destructure temperature and maxOutputTokens
     let contentToProcess = '';
 
     if (url) {
@@ -118,6 +118,9 @@ app.post('/generate-content', async (req, res) => {
     // Define the structured response schema for Gemini
     const generationConfig = {
         responseMimeType: "application/json",
+        // New: Add temperature and maxOutputTokens to generationConfig
+        temperature: temperature !== undefined ? temperature : 0.7, // Use provided or default
+        maxOutputTokens: maxOutputTokens !== undefined ? maxOutputTokens : 2048, // Use provided or default
         responseSchema: {
             type: "OBJECT",
             properties: {
@@ -167,7 +170,7 @@ app.post('/generate-content', async (req, res) => {
         // Call the Gemini API
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: generationConfig
+            generationConfig: generationConfig // Pass the updated generationConfig
         });
 
         const responseText = result.response.text();

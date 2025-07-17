@@ -20,6 +20,25 @@
             Summarize content, extract action items, and get next steps using Gemini AI.
         </p>
 
+        <!-- New: Gemini Parameter Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label for="temperatureInput" class="block text-gray-700 text-sm font-semibold mb-2">
+                    Temperature (Creativity): <span id="temperatureValue" class="font-normal text-gray-500">0.7</span>
+                </label>
+                <input type="range" id="temperatureInput" min="0" max="1" step="0.1" value="0.7"
+                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="maxTokensInput" class="block text-gray-700 text-sm font-semibold mb-2">
+                    Max Output Tokens: <span id="maxTokensValue" class="font-normal text-gray-500">2048</span>
+                </label>
+                <input type="range" id="maxTokensInput" min="50" max="4096" step="50" value="2048"
+                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+        <!-- End New: Gemini Parameter Controls -->
+
         <div class="mb-6">
             <label for="contentInput" class="block text-gray-700 text-sm font-semibold mb-2">
                 Enter Text or URL:

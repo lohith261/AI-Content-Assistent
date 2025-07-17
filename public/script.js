@@ -37,6 +37,11 @@ document.body.appendChild(historyContainer); // Append early so we can get refer
 const historyList = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
+// New: Gemini Parameter elements
+const temperatureInput = document.getElementById('temperatureInput');
+const temperatureValue = document.getElementById('temperatureValue');
+const maxTokensInput = document.getElementById('maxTokensInput');
+const maxTokensValue = document.getElementById('maxTokensValue');
 
 // --- Modal Elements (for user-friendly alerts) ---
 const modal = document.createElement('div');
@@ -111,7 +116,7 @@ function clearContent() {
     lucide.createIcons(); // Re-initialize icons just in case
 }
 
-// --- New: Local Storage History Logic ---
+// --- Local Storage History Logic ---
 const HISTORY_KEY = 'aiContentAssistantHistory';
 
 function saveToHistory(input, response) {
@@ -270,10 +275,23 @@ exampleButtons.forEach(button => {
     });
 });
 
+// --- New: Event listeners for parameter sliders to update display values ---
+temperatureInput.addEventListener('input', () => {
+    temperatureValue.textContent = temperatureInput.value;
+});
+
+maxTokensInput.addEventListener('input', () => {
+    maxTokensValue.textContent = maxTokensInput.value;
+});
+
 
 // Event listener for the Process button
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
+
+    // Get Gemini parameters from UI
+    const temperature = parseFloat(temperatureInput.value);
+    const maxOutputTokens = parseInt(maxTokensInput.value);
 
     // Clear previous outputs and error messages before new processing starts
     // but without hiding the container immediately to allow smooth transition
@@ -298,11 +316,19 @@ processBtn.addEventListener('click', async () => {
     clearBtn.disabled = true; // Disable clear button during processing
 
     try {
-        let payload = { text: inputContent }; // Default to text input
+        let payload = {
+            text: inputContent,
+            temperature: temperature, // Pass temperature
+            maxOutputTokens: maxOutputTokens // Pass maxOutputTokens
+        };
 
         // If the input looks like a URL, send it as a URL
         if (isValidUrl(inputContent)) {
-            payload = { url: inputContent };
+            payload = {
+                url: inputContent,
+                temperature: temperature, // Pass temperature
+                maxOutputTokens: maxOutputTokens // Pass maxOutputTokens
+            };
         }
 
         // Make a POST request to your backend server
@@ -358,7 +384,7 @@ processBtn.addEventListener('click', async () => {
             responseContainer.classList.remove('opacity-0');
         }, 10); // Small delay
 
-        // New: Save to history after successful processing
+        // Save to history after successful processing
         saveToHistory(inputContent, data);
 
 
@@ -395,5 +421,5 @@ contentInput.addEventListener('keydown', (event) => {
     }
 });
 
-// New: Load history when the page loads
+// Load history when the page loads
 document.addEventListener('DOMContentLoaded', displayHistory);
