@@ -12,12 +12,12 @@ const loadingSpinner = document.getElementById('loadingSpinner');
 const buttonText = document.getElementById('buttonText');
 const errorMessage = document.getElementById('errorMessage');
 
-// New: Get all copy buttons
+// Get all copy buttons
 const copyButtons = document.querySelectorAll('.copy-btn');
-// New: Get all example buttons
+// Get all example buttons
 const exampleButtons = document.querySelectorAll('.example-btn');
 
-// New: Elements for history display
+// Elements for history display
 const historyContainer = document.createElement('div'); // Will be appended to body
 historyContainer.id = 'historyContainer';
 historyContainer.className = 'bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl border border-gray-200 mt-8 hidden';
@@ -37,7 +37,7 @@ document.body.appendChild(historyContainer); // Append early so we can get refer
 const historyList = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
-// New: Gemini Parameter elements
+// Gemini Parameter elements
 const temperatureInput = document.getElementById('temperatureInput');
 const temperatureValue = document.getElementById('temperatureValue');
 const maxTokensInput = document.getElementById('maxTokensInput');
@@ -166,9 +166,15 @@ function displayHistory() {
             if (entry) {
                 // Populate main input/output with history item
                 contentInput.value = entry.input;
+                // Clear current output to prepare for new display
+                summaryOutput.innerHTML = '';
+                actionItemsOutput.innerHTML = '';
+                nextStepsOutput.innerHTML = '';
+
+                // Display summary immediately
                 summaryOutput.innerHTML = entry.response.summary || 'No summary generated.';
 
-                actionItemsOutput.innerHTML = '';
+                // Display action items
                 if (entry.response.actionItems && entry.response.actionItems.length > 0 && entry.response.actionItems[0] !== "None identified.") {
                     entry.response.actionItems.forEach(item => {
                         const li = document.createElement('li');
@@ -179,7 +185,7 @@ function displayHistory() {
                     actionItemsOutput.innerHTML = '<li>No action items identified.</li>';
                 }
 
-                nextStepsOutput.innerHTML = '';
+                // Display next steps
                 if (entry.response.nextSteps && entry.response.nextSteps.length > 0 && entry.response.nextSteps[0] !== "No further suggestions.") {
                     entry.response.nextSteps.forEach(step => {
                         const li = document.createElement('li');
@@ -275,7 +281,7 @@ exampleButtons.forEach(button => {
     });
 });
 
-// --- New: Event listeners for parameter sliders to update display values ---
+// --- Event listeners for parameter sliders to update display values ---
 temperatureInput.addEventListener('input', () => {
     temperatureValue.textContent = temperatureInput.value;
 });
@@ -294,8 +300,7 @@ processBtn.addEventListener('click', async () => {
     const maxOutputTokens = parseInt(maxTokensInput.value);
 
     // Clear previous outputs and error messages before new processing starts
-    // but without hiding the container immediately to allow smooth transition
-    summaryOutput.innerHTML = '';
+    summaryOutput.innerHTML = ''; // Clear summary immediately for streaming
     actionItemsOutput.innerHTML = '';
     nextStepsOutput.innerHTML = '';
     errorMessage.classList.add('hidden');
@@ -304,7 +309,6 @@ processBtn.addEventListener('click', async () => {
 
     if (inputContent === '') {
         showAlert('Input Required', 'Please enter some text or a URL to process.');
-        // Ensure response container is hidden if input is empty
         responseContainer.classList.add('hidden');
         return;
     }
@@ -318,94 +322,107 @@ processBtn.addEventListener('click', async () => {
     try {
         let payload = {
             text: inputContent,
-            temperature: temperature, // Pass temperature
-            maxOutputTokens: maxOutputTokens // Pass maxOutputTokens
+            temperature: temperature,
+            maxOutputTokens: maxOutputTokens
         };
 
-        // If the input looks like a URL, send it as a URL
         if (isValidUrl(inputContent)) {
             payload = {
                 url: inputContent,
-                temperature: temperature, // Pass temperature
-                maxOutputTokens: maxOutputTokens // Pass maxOutputTokens
+                temperature: temperature,
+                maxOutputTokens: maxOutputTokens
             };
         }
 
-        // Make a POST request to your backend server
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com/generate-content', { // IMPORTANT: Replace with your actual Render URL
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        // --- New: Handle Server-Sent Events (SSE) for streaming ---
+        const eventSource = new EventSource(`https://ai-content-assistant-backend.onrender.com/generate-content?${new URLSearchParams(payload).toString()}`); // Use EventSource for GET requests
 
-        // Check if the response was successful
-        if (!response.ok) {
-            const errorData = await response.json();
-            // Use the custom alert modal for server errors
-            showAlert('Processing Error', errorData.error || `Server error: ${response.status}`);
-            throw new Error(errorData.error || `Server error: ${response.status}`); // Still throw to enter catch block for console logging
-        }
+        let fullResponseAccumulator = ''; // To build the full JSON string from chunks
 
-        const data = await response.json();
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data); // Parse the SSE data
 
-        // Display the generated content
-        summaryOutput.innerHTML = data.summary || 'No summary generated.';
+            if (data.type === 'chunk') {
+                fullResponseAccumulator += data.content;
+                // Append chunk content to summary output
+                summaryOutput.innerHTML += data.content;
+                // Ensure response container is visible and fading in
+                responseContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    responseContainer.classList.remove('opacity-0');
+                }, 10);
+            } else if (data.type === 'final') {
+                eventSource.close(); // Close the connection
+                const finalResponse = data.content; // This is the parsed JSON object
 
-        // Display action items
-        actionItemsOutput.innerHTML = ''; // Clear previous list items
-        if (data.actionItems && data.actionItems.length > 0 && data.actionItems[0] !== "None identified.") {
-            data.actionItems.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                actionItemsOutput.appendChild(li);
-            });
-        } else {
-            actionItemsOutput.innerHTML = '<li>No action items identified.</li>';
-        }
+                // Populate action items and next steps from the final response
+                actionItemsOutput.innerHTML = '';
+                if (finalResponse.actionItems && finalResponse.actionItems.length > 0 && finalResponse.actionItems[0] !== "None identified.") {
+                    finalResponse.actionItems.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        actionItemsOutput.appendChild(li);
+                    });
+                } else {
+                    actionItemsOutput.innerHTML = '<li>No action items identified.</li>';
+                }
 
-        // Display next steps
-        nextStepsOutput.innerHTML = ''; // Clear previous list items
-        if (data.nextSteps && data.nextSteps.length > 0 && data.nextSteps[0] !== "No further suggestions.") {
-            data.nextSteps.forEach(step => {
-                const li = document.createElement('li');
-                li.textContent = step;
-                nextStepsOutput.appendChild(li);
-            });
-        } else {
-            nextStepsOutput.innerHTML = '<li>No specific next steps suggested.</li>';
-        }
+                nextStepsOutput.innerHTML = '';
+                if (finalResponse.nextSteps && finalResponse.nextSteps.length > 0 && finalResponse.nextSteps[0] !== "No further suggestions.") {
+                    finalResponse.nextSteps.forEach(step => {
+                        const li = document.createElement('li');
+                        li.textContent = step;
+                        nextStepsOutput.appendChild(li);
+                    });
+                } else {
+                    nextStepsOutput.innerHTML = '<li>No specific next steps suggested.</li>';
+                }
 
-        // Show the response container with fade-in effect
-        responseContainer.classList.remove('hidden');
-        // A small delay might be needed for the transition to work if 'hidden' was just removed
-        setTimeout(() => {
-            responseContainer.classList.remove('opacity-0');
-        }, 10); // Small delay
+                // Save to history after successful processing
+                saveToHistory(inputContent, finalResponse);
 
-        // Save to history after successful processing
-        saveToHistory(inputContent, data);
+                // Re-enable buttons and hide loading
+                loadingSpinner.classList.add('hidden');
+                buttonText.textContent = 'Process Content';
+                processBtn.disabled = false;
+                clearBtn.disabled = false;
+                lucide.createIcons(); // Re-render icons
+            } else if (data.type === 'error') {
+                eventSource.close(); // Close the connection
+                showAlert('Processing Error', data.content);
+                // Re-enable buttons and hide loading
+                loadingSpinner.classList.add('hidden');
+                buttonText.textContent = 'Process Content';
+                processBtn.disabled = false;
+                clearBtn.disabled = false;
+                responseContainer.classList.add('hidden'); // Hide on error
+                responseContainer.classList.add('opacity-0');
+            }
+        };
 
+        eventSource.onerror = (error) => {
+            eventSource.close(); // Close connection on error
+            console.error('EventSource failed:', error);
+            showAlert('Network Error', 'Failed to connect to the server for streaming. Please ensure the server is running and try again.');
+            // Re-enable buttons and hide loading
+            loadingSpinner.classList.add('hidden');
+            buttonText.textContent = 'Process Content';
+            processBtn.disabled = false;
+            clearBtn.disabled = false;
+            responseContainer.classList.add('hidden'); // Hide on error
+            responseContainer.classList.add('opacity-0');
+        };
 
     } catch (error) {
-        console.error('Error processing content:', error);
-        // The showAlert is already called above for server errors.
-        // This catch block mainly for network errors or unexpected client-side issues.
-        if (!modal.classList.contains('hidden')) { // If modal is already open from server response, don't open another
-            // Do nothing, error was already handled by showAlert
-        } else {
-            showAlert('Network Error', `Failed to connect to the server. Please ensure the server is running and try again. (${error.message})`);
-        }
-        responseContainer.classList.add('hidden'); // Hide response container on error
-        responseContainer.classList.add('opacity-0'); // Ensure it's opaque if hidden
-    } finally {
-        // Hide loading indicator and re-enable buttons
+        console.error('Error initiating streaming request:', error);
+        showAlert('Request Error', `Could not initiate request: ${error.message}.`);
+        // Re-enable buttons and hide loading
         loadingSpinner.classList.add('hidden');
         buttonText.textContent = 'Process Content';
         processBtn.disabled = false;
-        clearBtn.disabled = false; // Re-enable clear button
-        lucide.createIcons(); // Re-render Lucide icons if new elements were added
+        clearBtn.disabled = false;
+        responseContainer.classList.add('hidden'); // Hide on error
+        responseContainer.classList.add('opacity-0');
     }
 });
 
