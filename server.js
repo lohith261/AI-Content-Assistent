@@ -199,7 +199,7 @@ async function fetchContentFromUrl(url) {
 
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
-            // Call generateContent with stream: true option
+            // CORRECTED LINE: For @google/generative-ai@0.24.1, iterate directly over streamResult when stream: true is passed
             const streamResult = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
@@ -208,15 +208,15 @@ async function fetchContentFromUrl(url) {
 
             console.log('Received streamResult object:', streamResult);
 
-            // Access the stream using the .stream property on the result object
-            if (!streamResult || typeof streamResult.stream !== 'object' || typeof streamResult.stream[Symbol.asyncIterator] !== 'function') { // Check if .stream is an async iterable
-                console.error('Gemini API did not return a valid async iterable object via .stream property.');
+            // Check if streamResult is an async iterable
+            if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
+                console.error('Gemini API did not return a valid async iterable object.');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
                 return;
             }
 
-            for await (const chunk of streamResult.stream) { // Iterate directly over streamResult.stream
+            for await (const chunk of streamResult) { // Iterate directly over streamResult
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
