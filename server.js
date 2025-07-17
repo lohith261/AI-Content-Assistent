@@ -5,7 +5,7 @@ require('dotenv').config(); // Loads environment variables from .env file
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-generative-ai'); // Corrected import
+const { GoogleGenerativeAI } = require('@google/generative-ai'); // Corrected import: removed duplicate 'generative-'
 const axios = require('axios'); // For making HTTP requests to fetch URL content
 const cheerio = require('cheerio'); // For parsing HTML from fetched URLs
 
