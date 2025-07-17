@@ -199,25 +199,24 @@ async function fetchContentFromUrl(url) {
 
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
-            // CORRECTED LINE: Call generateContentStream() for streaming
-            const streamResult = await model.generateContentStream({
+            // CORRECTED LINE: Call generateContent() with stream: true option
+            const streamResult = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
-            });
+            }, { stream: true }); // Pass { stream: true } as the second argument
 
             console.log('Received streamResult object:', streamResult);
 
-            // Access the stream using the result object directly from generateContentStream()
-            // No need to call .stream() method here, as generateContentStream() already returns the iterable
-            if (!streamResult) { // Check if streamResult itself is null/undefined
-                console.error('Gemini API did not return a valid stream object.');
+            // Access the stream using the .stream property on the result object
+            if (!streamResult || typeof streamResult.stream !== 'function') { // Check if .stream is a function
+                console.error('Gemini API did not return a valid stream object or stream() method is missing.');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
                 return;
             }
 
-            for await (const chunk of streamResult) { // Iterate directly over streamResult
+            for await (const chunk of streamResult.stream()) { // Call the .stream() method
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
