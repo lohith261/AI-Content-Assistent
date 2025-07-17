@@ -43,6 +43,13 @@ const temperatureValue = document.getElementById('temperatureValue');
 const maxTokensInput = document.getElementById('maxTokensInput');
 const maxTokensValue = document.getElementById('maxTokensValue');
 
+// New: Image Upload elements
+const imageUpload = document.getElementById('imageUpload');
+const imagePreview = document.getElementById('imagePreview');
+const imagePreviewImg = imagePreview.querySelector('img');
+const clearImageBtn = document.getElementById('clearImageBtn');
+let uploadedImageBase64 = null; // To store the base64 string of the uploaded image
+
 // --- Modal Elements (for user-friendly alerts) ---
 const modal = document.createElement('div');
 modal.id = 'alertModal';
@@ -113,18 +120,24 @@ function clearContent() {
     clearBtn.disabled = false; // Ensure clear button is enabled
     buttonText.textContent = 'Process Content';
     loadingSpinner.classList.add('hidden');
+    // Also clear image input and preview
+    imageUpload.value = ''; // Clear file input
+    uploadedImageBase64 = null; // Clear stored base64
+    imagePreview.classList.add('hidden'); // Hide preview
+    imagePreviewImg.src = '#'; // Reset image src
     lucide.createIcons(); // Re-initialize icons just in case
 }
 
 // --- Local Storage History Logic ---
 const HISTORY_KEY = 'aiContentAssistantHistory';
 
-function saveToHistory(input, response) {
+function saveToHistory(input, response, image = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = {
         timestamp: new Date().toISOString(),
         input: input,
-        response: response
+        response: response,
+        image: image // Save image data if present
     };
     history.unshift(newEntry); // Add to the beginning
     // Keep only the last 5 entries to avoid clutter
@@ -148,7 +161,8 @@ function displayHistory() {
         historyItem.className = 'bg-gray-100 p-4 rounded-lg border border-gray-200 relative group';
         historyItem.innerHTML = `
             <p class="text-xs text-gray-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p>
-            <p class="font-semibold text-gray-700 mb-2 truncate">Input: ${entry.input.substring(0, 100)}${entry.input.length > 100 ? '...' : ''}</p>
+            <p class="font-semibold text-gray-700 mb-2 truncate">Input: ${entry.input ? entry.input.substring(0, 100) + (entry.input.length > 100 ? '...' : '') : (entry.image ? 'Image Input' : 'N/A')}</p>
+            ${entry.image ? `<img src="${entry.image}" class="w-16 h-16 object-cover rounded-md mb-2">` : ''}
             <p class="text-gray-600 text-sm mb-2 line-clamp-2">Summary: ${entry.response.summary || 'N/A'}</p>
             <button class="view-history-btn absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                     data-index="${index}" title="View Details">
@@ -165,7 +179,19 @@ function displayHistory() {
             const entry = history[index];
             if (entry) {
                 // Populate main input/output with history item
-                contentInput.value = entry.input;
+                contentInput.value = entry.input || ''; // Set text input
+                // Clear and set image input if available
+                imageUpload.value = '';
+                if (entry.image) {
+                    uploadedImageBase64 = entry.image;
+                    imagePreviewImg.src = entry.image;
+                    imagePreview.classList.remove('hidden');
+                } else {
+                    uploadedImageBase64 = null;
+                    imagePreview.classList.add('hidden');
+                    imagePreviewImg.src = '#';
+                }
+
                 // Clear current output to prepare for new display
                 summaryOutput.innerHTML = '';
                 actionItemsOutput.innerHTML = '';
@@ -276,6 +302,11 @@ exampleButtons.forEach(button => {
         contentInput.value = exampleContent; // Set the input field value
         clearContent(); // Clear previous results (but keep input content)
         contentInput.value = exampleContent; // Re-set input as clearContent clears it
+        // Clear image selection if an example is used
+        imageUpload.value = '';
+        uploadedImageBase64 = null;
+        imagePreview.classList.add('hidden');
+        imagePreviewImg.src = '#';
         // Optionally, trigger processing automatically:
         // processBtn.click(); // Uncomment this line if you want examples to auto-process
     });
@@ -288,6 +319,57 @@ temperatureInput.addEventListener('input', () => {
 
 maxTokensInput.addEventListener('input', () => {
     maxTokensValue.textContent = maxTokensInput.value;
+});
+
+// --- New: Image Upload Handling ---
+imageUpload.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            showAlert('Invalid File Type', 'Please upload an image file (e.g., JPEG, PNG, GIF).');
+            imageUpload.value = ''; // Clear the input
+            return;
+        }
+
+        // Clear text/URL input if an image is uploaded
+        contentInput.value = '';
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            uploadedImageBase64 = e.target.result; // Store Base64 string
+            imagePreviewImg.src = e.target.result; // Display preview
+            imagePreview.classList.remove('hidden');
+        };
+        reader.onerror = (error) => {
+            console.error("Error reading file:", error);
+            showAlert('File Read Error', 'Could not read the image file.');
+            uploadedImageBase64 = null;
+            imageUpload.value = '';
+            imagePreview.classList.add('hidden');
+        };
+        reader.readAsDataURL(file); // Read file as Base64 Data URL
+    } else {
+        uploadedImageBase64 = null;
+        imagePreview.classList.add('hidden');
+        imagePreviewImg.src = '#';
+    }
+});
+
+clearImageBtn.addEventListener('click', () => {
+    imageUpload.value = ''; // Clear file input
+    uploadedImageBase64 = null; // Clear stored base64
+    imagePreview.classList.add('hidden'); // Hide preview
+    imagePreviewImg.src = '#'; // Reset image src
+});
+
+// --- New: Clear text/URL input if image is selected, and vice-versa ---
+contentInput.addEventListener('input', () => {
+    if (contentInput.value.trim() !== '') {
+        imageUpload.value = '';
+        uploadedImageBase64 = null;
+        imagePreview.classList.add('hidden');
+        imagePreviewImg.src = '#';
+    }
 });
 
 
@@ -307,11 +389,18 @@ processBtn.addEventListener('click', async () => {
     errorMessage.textContent = '';
     responseContainer.classList.add('opacity-0'); // Start fade out if visible
 
-    if (inputContent === '') {
-        showAlert('Input Required', 'Please enter some text or a URL to process.');
+    // Determine input type and validate
+    if (inputContent === '' && !uploadedImageBase64) {
+        showAlert('Input Required', 'Please enter some text, a URL, or upload an image to process.');
         responseContainer.classList.add('hidden');
         return;
     }
+    if (inputContent !== '' && uploadedImageBase64) {
+        showAlert('Conflicting Inputs', 'Please provide either text/URL OR an image, not both.');
+        responseContainer.classList.add('hidden');
+        return;
+    }
+
 
     // Show loading indicator and disable buttons
     loadingSpinner.classList.remove('hidden');
@@ -321,21 +410,25 @@ processBtn.addEventListener('click', async () => {
 
     try {
         let payload = {
-            text: inputContent,
             temperature: temperature,
             maxOutputTokens: maxOutputTokens
         };
 
-        if (isValidUrl(inputContent)) {
-            payload = {
-                url: inputContent,
-                temperature: temperature,
-                maxOutputTokens: maxOutputTokens
-            };
+        if (uploadedImageBase64) {
+            payload.image = uploadedImageBase64;
+            // For image input, the 'text' part of the prompt comes from contentInput
+            // or a default if contentInput is empty.
+            payload.text = inputContent || "Describe this image and identify any text, action items, or relevant information within it.";
+        } else if (isValidUrl(inputContent)) {
+            payload.url = inputContent;
+        } else {
+            payload.text = inputContent;
         }
 
-        // --- New: Handle Server-Sent Events (SSE) for streaming ---
-        const eventSource = new EventSource(`https://ai-content-assistant-backend.onrender.com/generate-content?${new URLSearchParams(payload).toString()}`); // Use EventSource for GET requests
+        // --- Handle Server-Sent Events (SSE) for streaming ---
+        // For GET requests, payload needs to be URL encoded
+        const queryString = new URLSearchParams(payload).toString();
+        const eventSource = new EventSource(`https://ai-content-assistant-backend.onrender.com/generate-content?${queryString}`); // Use EventSource for GET requests
 
         let fullResponseAccumulator = ''; // To build the full JSON string from chunks
 
@@ -379,7 +472,7 @@ processBtn.addEventListener('click', async () => {
                 }
 
                 // Save to history after successful processing
-                saveToHistory(inputContent, finalResponse);
+                saveToHistory(inputContent || "Image Input", finalResponse, uploadedImageBase64); // Save image to history
 
                 // Re-enable buttons and hide loading
                 loadingSpinner.classList.add('hidden');
