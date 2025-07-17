@@ -43,7 +43,7 @@ const temperatureValue = document.getElementById('temperatureValue');
 const maxTokensInput = document.getElementById('maxTokensInput');
 const maxTokensValue = document.getElementById('maxTokensValue');
 
-// New: Image Upload elements
+// Image Upload elements
 const imageUpload = document.getElementById('imageUpload');
 const imagePreview = document.getElementById('imagePreview');
 const imagePreviewImg = imagePreview.querySelector('img');
@@ -321,7 +321,7 @@ maxTokensInput.addEventListener('input', () => {
     maxTokensValue.textContent = maxTokensInput.value;
 });
 
-// --- New: Image Upload Handling ---
+// --- Image Upload Handling ---
 imageUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -362,7 +362,7 @@ clearImageBtn.addEventListener('click', () => {
     imagePreviewImg.src = '#'; // Reset image src
 });
 
-// --- New: Clear text/URL input if image is selected, and vice-versa ---
+// --- Clear text/URL input if image is selected, and vice-versa ---
 contentInput.addEventListener('input', () => {
     if (contentInput.value.trim() !== '') {
         imageUpload.value = '';
@@ -406,7 +406,8 @@ processBtn.addEventListener('click', async () => {
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
-    clearBtn.disabled = true; // Disable clear button during processing
+    clearBtn.disabled = false; // Ensure clear button is enabled
+    // clearBtn.disabled = true; // This line was causing an issue in the previous code, removed it.
 
     try {
         let payload = {
@@ -425,30 +426,20 @@ processBtn.addEventListener('click', async () => {
             payload.text = inputContent;
         }
 
-        // --- Handle Server-Sent Events (SSE) for streaming ---
+        // --- Handle Server-Sent Events (SSE) for non-streaming response ---
         // For GET requests, payload needs to be URL encoded
         const queryString = new URLSearchParams(payload).toString();
         const eventSource = new EventSource(`https://ai-content-assistant-backend.onrender.com/generate-content?${queryString}`); // Use EventSource for GET requests
 
-        let fullResponseAccumulator = ''; // To build the full JSON string from chunks
-
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data); // Parse the SSE data
 
-            if (data.type === 'chunk') {
-                fullResponseAccumulator += data.content;
-                // Append chunk content to summary output
-                summaryOutput.innerHTML += data.content;
-                // Ensure response container is visible and fading in
-                responseContainer.classList.remove('hidden');
-                setTimeout(() => {
-                    responseContainer.classList.remove('opacity-0');
-                }, 10);
-            } else if (data.type === 'final') {
+            if (data.type === 'final') { // We only expect a 'final' event from the non-streaming backend
                 eventSource.close(); // Close the connection
                 const finalResponse = data.content; // This is the parsed JSON object
 
-                // Populate action items and next steps from the final response
+                // Populate all outputs from the final response
+                summaryOutput.innerHTML = finalResponse.summary || 'No summary generated.'; // Ensure summary is final
                 actionItemsOutput.innerHTML = '';
                 if (finalResponse.actionItems && finalResponse.actionItems.length > 0 && finalResponse.actionItems[0] !== "None identified.") {
                     finalResponse.actionItems.forEach(item => {
@@ -470,6 +461,11 @@ processBtn.addEventListener('click', async () => {
                 } else {
                     nextStepsOutput.innerHTML = '<li>No specific next steps suggested.</li>';
                 }
+
+                responseContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    responseContainer.classList.remove('opacity-0');
+                }, 10);
 
                 // Save to history after successful processing
                 saveToHistory(inputContent || "Image Input", finalResponse, uploadedImageBase64); // Save image to history
@@ -496,7 +492,7 @@ processBtn.addEventListener('click', async () => {
         eventSource.onerror = (error) => {
             eventSource.close(); // Close connection on error
             console.error('EventSource failed:', error);
-            showAlert('Network Error', 'Failed to connect to the server for streaming. Please ensure the server is running and try again.');
+            showAlert('Network Error', 'Failed to connect to the server. Please ensure the server is running and try again.');
             // Re-enable buttons and hide loading
             loadingSpinner.classList.add('hidden');
             buttonText.textContent = 'Process Content';
@@ -507,7 +503,7 @@ processBtn.addEventListener('click', async () => {
         };
 
     } catch (error) {
-        console.error('Error initiating streaming request:', error);
+        console.error('Error initiating request:', error);
         showAlert('Request Error', `Could not initiate request: ${error.message}.`);
         // Re-enable buttons and hide loading
         loadingSpinner.classList.add('hidden');

@@ -195,35 +195,22 @@ async function fetchContentFromUrl(url) {
         try {
             res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
 
-            let fullResponseText = '';
-
-            console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
-
-            // CORRECTED LINE: Use generateContentStream() for direct streaming iterable
-            const streamResult = await model.generateContentStream({ // Changed from generateContent
+            // Perform a non-streaming call to get the full response at once
+            const generateContentResponse = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
-            }); // Removed { stream: true } from here as generateContentStream is used
+            });
 
-            console.log('Received streamResult object:', streamResult);
+            console.log('Received generateContentResponse object (non-streaming):', generateContentResponse);
 
-            // Check if streamResult is an async iterable (which generateContentStream() should return)
-            if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
-                console.error('Gemini API did not return a valid async iterable object from generateContentStream().');
-                res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
-                res.end();
-                return;
-            }
+            // Get the full text response directly
+            const fullResponseText = generateContentResponse.text();
 
-            for await (const chunk of streamResult) { // Iterate directly over streamResult
-                const chunkText = chunk.text();
-                fullResponseText += chunkText;
-                res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
-            }
-
+            // Parse the full response
             const parsedResponse = JSON.parse(fullResponseText);
 
+            // Ensure actionItems and nextSteps are always arrays
             if (parsedResponse.actionItems && !Array.isArray(parsedResponse.actionItems)) { parsedResponse.actionItems = [parsedResponse.actionItems]; }
             if (parsedResponse.nextSteps && !Array.isArray(parsedResponse.nextSteps)) { parsedResponse.nextSteps = [parsedResponse.nextSteps]; }
 
@@ -238,8 +225,9 @@ async function fetchContentFromUrl(url) {
                 console.log(`Saved entry for user ${userId}`);
             }
 
+            // Send the full response as a single 'final' SSE event
             res.write(`data: ${JSON.stringify({ type: 'final', content: parsedResponse })}\n\n`);
-            res.end();
+            res.end(); // End the response here as we're not streaming chunks
 
         } catch (error) {
             console.error("Error calling Gemini API or Firestore:", error);
