@@ -204,17 +204,23 @@ async function fetchContentFromUrl(url) {
 
             console.log('Received generateContentResponse object (non-streaming):', generateContentResponse);
 
-            // CORRECTED: Access the text safely
+            // CORRECTED: Access the text safely with more detailed logging
             let fullResponseText = '';
-            if (generateContentResponse.candidates && generateContentResponse.candidates.length > 0 &&
-                generateContentResponse.candidates[0].content &&
-                generateContentResponse.candidates[0].content.parts &&
-                generateContentResponse.candidates[0].content.parts.length > 0 &&
-                generateContentResponse.candidates[0].content.parts[0].text) {
-                fullResponseText = generateContentResponse.candidates[0].content.parts[0].text;
+            const candidate = generateContentResponse.candidates && generateContentResponse.candidates.length > 0 ? generateContentResponse.candidates[0] : null;
+
+            if (candidate && candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                const firstPart = candidate.content.parts[0];
+                if (firstPart.text) {
+                    fullResponseText = firstPart.text;
+                } else {
+                    console.error("Gemini response: First content part has no 'text' property.", firstPart);
+                }
             } else {
-                console.error("Gemini response structure unexpected or content missing:", generateContentResponse);
-                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected content. Response might be empty or blocked." })}\n\n`);
+                console.error("Gemini response structure unexpected or content missing. Candidates or content parts not found.", generateContentResponse);
+            }
+
+            if (!fullResponseText) { // If text extraction failed
+                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected text content. Response might be empty or blocked." })}\n\n`);
                 res.end();
                 return;
             }
