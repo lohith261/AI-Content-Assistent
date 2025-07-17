@@ -94,11 +94,10 @@ async function fetchContentFromUrl(url) {
 
 // --- API Endpoint for Content Processing ---
 app.post('/generate-content', async (req, res) => {
-    const { text, url, temperature, maxOutputTokens } = req.body; // New: Destructure temperature and maxOutputTokens
+    const { text, url, temperature, maxOutputTokens } = req.body;
     let contentToProcess = '';
 
     if (url) {
-        // If a URL is provided, try to fetch its content
         try {
             contentToProcess = await fetchContentFromUrl(url);
             if (!contentToProcess) {
@@ -108,34 +107,17 @@ app.post('/generate-content', async (req, res) => {
             return res.status(500).json({ error: error.message });
         }
     } else if (text) {
-        // Otherwise, use the provided text directly
         contentToProcess = text;
     } else {
-        // If neither text nor URL is provided
         return res.status(400).json({ error: "Please provide text or a URL." });
     }
 
     // Define the structured response schema for Gemini
     const generationConfig = {
-        responseMimeType: "application/json",
-        // New: Add temperature and maxOutputTokens to generationConfig
-        temperature: temperature !== undefined ? temperature : 0.7, // Use provided or default
-        maxOutputTokens: maxOutputTokens !== undefined ? maxOutputTokens : 2048, // Use provided or default
-        responseSchema: {
-            type: "OBJECT",
-            properties: {
-                summary: { type: "STRING" },
-                actionItems: {
-                    type: "ARRAY",
-                    items: { type: "STRING" }
-                },
-                nextSteps: {
-                    type: "ARRAY",
-                    items: { type: "STRING" }
-                }
-            },
-            propertyOrdering: ["summary", "actionItems", "nextSteps"]
-        }
+        // responseMimeType: "application/json", // Removed for streaming text first
+        temperature: temperature !== undefined ? temperature : 0.7,
+        maxOutputTokens: maxOutputTokens !== undefined ? maxOutputTokens : 2048,
+        // responseSchema is not used with streaming, as we'll parse the full response at the end
     };
 
     // Craft the prompt for Gemini with advanced instructions
@@ -167,14 +149,31 @@ app.post('/generate-content', async (req, res) => {
     `;
 
     try {
-        // Call the Gemini API
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: generationConfig // Pass the updated generationConfig
+        // Set headers for streaming response
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream', // MIME type for server-sent events
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
         });
 
-        const responseText = result.response.text();
-        const parsedResponse = JSON.parse(responseText); // Parse the JSON string from Gemini
+        let fullResponseText = ''; // To accumulate the full response
+        let accumulatedJson = ''; // To accumulate JSON parts if Gemini streams JSON
+
+        // Call the Gemini API with streaming enabled
+        const streamResult = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: generationConfig
+        }, { stream: true }); // Enable streaming!
+
+        // Iterate over the streamed chunks
+        for await (const chunk of streamResult.stream) {
+            const chunkText = chunk.text();
+            fullResponseText += chunkText; // Accumulate for final parsing
+            res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`); // Send each chunk as an SSE
+        }
+
+        // After the stream ends, parse the full response and send final data
+        const parsedResponse = JSON.parse(fullResponseText);
 
         // Ensure actionItems and nextSteps are always arrays, even if Gemini returns "None" as a string
         if (parsedResponse.actionItems && !Array.isArray(parsedResponse.actionItems)) {
@@ -184,19 +183,21 @@ app.post('/generate-content', async (req, res) => {
             parsedResponse.nextSteps = [parsedResponse.nextSteps];
         }
 
-
-        res.json(parsedResponse); // Send the structured JSON response back to the frontend
+        // Send the final, parsed JSON object
+        res.write(`data: ${JSON.stringify({ type: 'final', content: parsedResponse })}\n\n`);
+        res.end(); // End the response stream
 
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        // Attempt to parse error details if available
         let errorMessage = "Failed to generate content. Please try again.";
         if (error.response && error.response.data && error.response.data.error) {
             errorMessage = error.response.data.error.message || errorMessage;
         } else if (error.message) {
             errorMessage = error.message;
         }
-        res.status(500).json({ error: `AI generation failed: ${errorMessage}. This might be due to content length or an issue with the AI model.` });
+        // Send error message as an SSE event
+        res.write(`data: ${JSON.stringify({ type: 'error', content: `AI generation failed: ${errorMessage}. This might be due to content length or an issue with the AI model.` })}\n\n`);
+        res.end(); // End the response stream
     }
 });
 
