@@ -204,8 +204,8 @@ async function fetchContentFromUrl(url) {
 
             console.log('Received generateContentResponse object (non-streaming):', generateContentResponse);
 
-            // Get the full text response directly
-            const fullResponseText = generateContentResponse.text();
+            // CORRECTED: Access the text directly from the first candidate's first part
+            const fullResponseText = generateContentResponse.candidates[0].content.parts[0].text;
 
             // Parse the full response
             const parsedResponse = JSON.parse(fullResponseText);
