@@ -1,111 +1,111 @@
-    // server.js
+// server.js
 
-    // Import necessary modules
-    require('dotenv').config(); // Loads environment variables from .env file
-    const express = require('express');
-    const cors = require = require('cors'); // Corrected typo here
-    const path = require('path');
-    const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-    const axios = require('axios'); // For making HTTP requests to fetch URL content
-    const cheerio = require('cheerio'); // For parsing HTML from fetched URLs
+// Import necessary modules
+require('dotenv').config(); // Loads environment variables from .env file
+const express = require('express');
+const cors = require('cors'); // CORRECTED: Removed the extra ' = require'
+const path = require('path');
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
+const axios = require('axios'); // For making HTTP requests to fetch URL content
+const cheerio = require('cheerio'); // For parsing HTML from fetched URLs
 
-    // New: Firebase Admin SDK imports
-    const admin = require('firebase-admin');
+// New: Firebase Admin SDK imports
+const admin = require('firebase-admin');
 
-    // Initialize Express app
-    const app = express();
-    const port = 3000;
+// Initialize Express app
+const app = express();
+const port = 3000;
 
-    // Middleware setup
-    app.use(cors()); // Enable CORS for all routes
-    // app.use(express.json()); // No longer needed for GET requests with query params for EventSource
-    // Serve static files from the 'public' directory
-    app.use(express.static(path.join(__dirname, 'public')));
+// Middleware setup
+app.use(cors()); // Enable CORS for all routes
+// app.use(express.json()); // No longer needed for GET requests with query params for EventSource
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-    // --- Firebase Admin SDK Initialization ---
-    if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PROJECT_ID) {
-        console.error("Error: Firebase Admin SDK environment variables are not set!");
-        console.error("Please set FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and FIREBASE_PROJECT_ID.");
-        process.exit(1);
-    }
+// --- Firebase Admin SDK Initialization ---
+if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PROJECT_ID) {
+    console.error("Error: Firebase Admin SDK environment variables are not set!");
+    console.error("Please set FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and FIREBASE_PROJECT_ID.");
+    process.exit(1);
+}
 
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Handle newline characters
+        })
+    });
+    console.log('Firebase Admin SDK initialized successfully.');
+} catch (error) {
+    console.error('Error initializing Firebase Admin SDK:', error);
+    process.exit(1);
+}
+
+const db = admin.firestore(); // Get a Firestore instance
+const auth = admin.auth();   // Get an Auth instance
+
+// --- Gemini API Configuration ---
+const API_KEY = process.env.GEMINI_API_KEY; // Get API key from environment variables
+
+if (!API_KEY) {
+    console.error("Error: GEMINI_API_KEY is not set in the .env file!");
+    console.error("Please create a .env file in the root directory and add: GEMINI_API_KEY=YOUR_API_KEY_HERE");
+    process.exit(1);
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// Safety settings for Gemini API (optional but recommended)
+const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+];
+
+// Helper function to convert Base64 to GoogleGenerativeAI.Part
+function fileToGenerativePart(base64String, mimeType) {
+    const base64Data = base64String.split(',')[1];
+    return {
+        inlineData: {
+            data: base64Data,
+            mimeType
+        },
+    };
+}
+
+// --- Helper function to fetch and parse content from a URL ---
+async function fetchContentFromUrl(url) {
     try {
-        admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Handle newline characters
-            })
+        const response = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
+            timeout: 10000
         });
-        console.log('Firebase Admin SDK initialized successfully.');
+        const $ = cheerio.load(response.data);
+        $('script, style, noscript, link, meta, iframe, form, nav, footer, header, aside, .sidebar, .ad, [aria-hidden="true"]').remove();
+        let mainContent = '';
+        if ($('article').length) { mainContent = $('article').text(); }
+        else if ($('main').length) { mainContent = $('main').text(); }
+        else {
+            mainContent = $('p, h1, h2, h3, h4, h5, h6').text();
+            if (!mainContent) { mainContent = $('body').text(); }
+        }
+        mainContent = mainContent.replace(/[\n\t]+/g, '\n').replace(/\s\s+/g, ' ').trim();
+        const MAX_CONTENT_LENGTH = 15000;
+        if (mainContent.length > MAX_CONTENT_LENGTH) {
+            mainContent = mainContent.substring(0, MAX_CONTENT_LENGTH) + '\n\n... [Content truncated to fit processing limits]';
+        }
+        if (mainContent.length < 50) { throw new Error("Extracted content is too short or not meaningful."); }
+        return mainContent;
     } catch (error) {
-        console.error('Error initializing Firebase Admin SDK:', error);
-        process.exit(1);
-    }
-
-    const db = admin.firestore(); // Get a Firestore instance
-    const auth = admin.auth();   // Get an Auth instance
-
-    // --- Gemini API Configuration ---
-    const API_KEY = process.env.GEMINI_API_KEY; // Get API key from environment variables
-
-    if (!API_KEY) {
-        console.error("Error: GEMINI_API_KEY is not set in the .env file!");
-        console.error("Please create a .env file in the root directory and add: GEMINI_API_KEY=YOUR_API_KEY_HERE");
-        process.exit(1);
-    }
-
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    // Safety settings for Gemini API (optional but recommended)
-    const safetySettings = [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    ];
-
-    // Helper function to convert Base64 to GoogleGenerativeAI.Part
-    function fileToGenerativePart(base64String, mimeType) {
-        const base64Data = base64String.split(',')[1];
-        return {
-            inlineData: {
-                data: base64Data,
-                mimeType
-            },
-        };
-    }
-
-    // --- Helper function to fetch and parse content from a URL ---
-    async function fetchContentFromUrl(url) {
-        try {
-            const response = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
-                timeout: 10000
-            });
-            const $ = cheerio.load(response.data);
-            $('script, style, noscript, link, meta, iframe, form, nav, footer, header, aside, .sidebar, .ad, [aria-hidden="true"]').remove();
-            let mainContent = '';
-            if ($('article').length) { mainContent = $('article').text(); }
-            else if ($('main').length) { mainContent = $('main').text(); }
-            else {
-                mainContent = $('p, h1, h2, h3, h4, h5, h6').text();
-                if (!mainContent) { mainContent = $('body').text(); }
-            }
-            mainContent = mainContent.replace(/[\n\t]+/g, '\n').replace(/\s\s+/g, ' ').trim();
-            const MAX_CONTENT_LENGTH = 15000;
-            if (mainContent.length > MAX_CONTENT_LENGTH) {
-                mainContent = mainContent.substring(0, MAX_CONTENT_LENGTH) + '\n\n... [Content truncated to fit processing limits]';
-            }
-            if (mainContent.length < 50) { throw new Error("Extracted content is too short or not meaningful."); }
-            return mainContent;
-        } catch (error) {
-            console.error(`Error fetching or parsing content from URL ${url}:`, error.message);
-            if (error.code === 'ENOTFOUND') { throw new Error("Invalid URL or domain not found. Please check the URL."); }
-            else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') { throw new Error("Could not connect to the URL. The server might be down or blocking requests."); }
-            else if (error.message.includes("Extracted content is too short")) { throw new Error("Could not extract significant text content from the provided URL. It might be an image-heavy site or require JavaScript rendering."); }
-            else { throw new Error(`Failed to fetch content from URL: ${error.message}`); }
+        console.error(`Error fetching or parsing content from URL ${url}:`, error.message);
+        if (error.code === 'ENOTFOUND') { throw new Error("Invalid URL or domain not found. Please check the URL."); }
+        else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') { throw new Error("Could not connect to the URL. The server might be down or blocking requests."); }
+        else if (error.message.includes("Extracted content is too short")) { throw new Error("Could not extract significant text content from the provided URL. It might be an image-heavy site or require JavaScript rendering."); }
+        else { throw new Error(`Failed to fetch content from URL: ${error.message}`); }
         }
     }
 
@@ -280,4 +280,3 @@
         console.log(`Server listening at http://localhost:${port}`);
         console.log(`Open your browser to http://localhost:${port}/index.html to use the app.`);
     });
-    
