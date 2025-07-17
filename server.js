@@ -204,8 +204,20 @@ async function fetchContentFromUrl(url) {
 
             console.log('Received generateContentResponse object (non-streaming):', generateContentResponse);
 
-            // CORRECTED: Access the text directly from the first candidate's first part
-            const fullResponseText = generateContentResponse.candidates[0].content.parts[0].text;
+            // CORRECTED: Access the text safely
+            let fullResponseText = '';
+            if (generateContentResponse.candidates && generateContentResponse.candidates.length > 0 &&
+                generateContentResponse.candidates[0].content &&
+                generateContentResponse.candidates[0].content.parts &&
+                generateContentResponse.candidates[0].content.parts.length > 0 &&
+                generateContentResponse.candidates[0].content.parts[0].text) {
+                fullResponseText = generateContentResponse.candidates[0].content.parts[0].text;
+            } else {
+                console.error("Gemini response structure unexpected or content missing:", generateContentResponse);
+                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected content. Response might be empty or blocked." })}\n\n`);
+                res.end();
+                return;
+            }
 
             // Parse the full response
             const parsedResponse = JSON.parse(fullResponseText);
