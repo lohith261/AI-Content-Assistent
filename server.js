@@ -208,15 +208,25 @@ async function fetchContentFromUrl(url) {
             let fullResponseText = '';
             const candidate = generateContentResponse.candidates && generateContentResponse.candidates.length > 0 ? generateContentResponse.candidates[0] : null;
 
+            // NEW LOGGING: Log candidate and its content
+            console.log('Candidate object:', candidate);
+            if (candidate) {
+                console.log('Candidate content object:', candidate.content);
+                if (candidate.content) {
+                    console.log('Candidate content parts array:', candidate.content.parts);
+                }
+            }
+
+
             if (candidate && candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
                 const firstPart = candidate.content.parts[0];
                 if (firstPart.text) {
                     fullResponseText = firstPart.text;
                 } else {
-                    console.error("Gemini response: First content part has no 'text' property.", firstPart);
+                    console.error("Gemini response: First content part has no 'text' property. Full part:", firstPart);
                 }
             } else {
-                console.error("Gemini response structure unexpected or content missing. Candidates or content parts not found.", generateContentResponse);
+                console.error("Gemini response structure unexpected or content missing. Candidates or content parts not found. Full response:", generateContentResponse);
             }
 
             if (!fullResponseText) { // If text extraction failed
