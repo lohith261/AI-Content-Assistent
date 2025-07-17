@@ -30,7 +30,7 @@
                       placeholder="Paste your article, email, meeting notes, or a website URL here..."></textarea>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-4 mb-8">
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <button id="processBtn"
                     class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-200 ease-in-out flex items-center justify-center">
                 <span id="buttonText">Process Content</span>
@@ -45,20 +45,53 @@
             </button>
         </div>
 
+        <div class="mb-8 text-center">
+            <p class="text-gray-700 text-sm mb-2">Try an example:</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button class="example-btn text-sm bg-gray-200 text-gray-700 py-1 px-3 rounded-full hover:bg-gray-300 transition duration-150"
+                        data-example-type="text"
+                        data-example-content="The quarterly sales report showed a 15% increase in Q2, primarily driven by new product launches in the APAC region. However, marketing spend exceeded budget by 10%. A follow-up meeting is scheduled for next Tuesday to discuss budget reallocation and strategies for Q3. John needs to prepare a detailed breakdown of marketing expenses.">
+                    Sales Report Summary
+                </button>
+                <button class="example-btn text-sm bg-gray-200 text-gray-700 py-1 px-3 rounded-full hover:bg-gray-300 transition duration-150"
+                        data-example-type="text"
+                        data-example-content="Team, just a reminder that the project proposal is due by end of day Friday. Please ensure all sections are complete. Sarah, please review the technical specifications. Mark, finalize the budget figures. I'll consolidate everything by 3 PM.">
+                    Meeting Notes Actions
+                </button>
+                <button class="example-btn text-sm bg-gray-200 text-gray-700 py-1 px-3 rounded-full hover:bg-gray-300 transition duration-150"
+                        data-example-type="url"
+                        data-example-content="https://en.wikipedia.org/wiki/Artificial_intelligence">
+                    Wikipedia AI Article
+                </button>
+            </div>
+        </div>
+
 
         <div id="responseContainer" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg hidden opacity-0 transition-opacity duration-500 ease-in">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                <i data-lucide="file-text" class="mr-2 text-blue-600"></i> Summary
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+                <span class="flex items-center"><i data-lucide="file-text" class="mr-2 text-blue-600"></i> Summary</span>
+                <button class="copy-btn text-gray-500 hover:text-blue-600 transition duration-150 relative" data-target="summaryOutput">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                    <span class="copy-feedback absolute top-0 right-0 -mt-2 -mr-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded-full hidden">Copied!</span>
+                </button>
             </h2>
             <div id="summaryOutput" class="text-gray-700 leading-relaxed mb-6"></div>
 
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                <i data-lucide="check-circle" class="mr-2 text-green-600"></i> Action Items
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+                <span class="flex items-center"><i data-lucide="check-circle" class="mr-2 text-green-600"></i> Action Items</span>
+                <button class="copy-btn text-gray-500 hover:text-blue-600 transition duration-150 relative" data-target="actionItemsOutput">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                    <span class="copy-feedback absolute top-0 right-0 -mt-2 -mr-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded-full hidden">Copied!</span>
+                </button>
             </h2>
             <ul id="actionItemsOutput" class="list-disc list-inside text-gray-700 mb-6"></ul>
 
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                <i data-lucide="lightbulb" class="mr-2 text-yellow-600"></i> Suggested Next Steps
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+                <span class="flex items-center"><i data-lucide="lightbulb" class="mr-2 text-yellow-600"></i> Suggested Next Steps</span>
+                <button class="copy-btn text-gray-500 hover:text-blue-600 transition duration-150 relative" data-target="nextStepsOutput">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                    <span class="copy-feedback absolute top-0 right-0 -mt-2 -mr-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded-full hidden">Copied!</span>
+                </button>
             </h2>
             <ul id="nextStepsOutput" class="list-disc list-inside text-gray-700"></ul>
         </div>

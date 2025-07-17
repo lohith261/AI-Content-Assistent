@@ -3,14 +3,19 @@
 // Get references to DOM elements
 const contentInput = document.getElementById('contentInput');
 const processBtn = document.getElementById('processBtn');
-const clearBtn = document.getElementById('clearBtn'); // New: Reference to the Clear button
+const clearBtn = document.getElementById('clearBtn');
 const responseContainer = document.getElementById('responseContainer');
 const summaryOutput = document.getElementById('summaryOutput');
 const actionItemsOutput = document.getElementById('actionItemsOutput');
 const nextStepsOutput = document.getElementById('nextStepsOutput');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const buttonText = document.getElementById('buttonText');
-const errorMessage = document.getElementById('errorMessage'); // For displaying general errors
+const errorMessage = document.getElementById('errorMessage');
+
+// New: Get all copy buttons
+const copyButtons = document.querySelectorAll('.copy-btn');
+// New: Get all example buttons
+const exampleButtons = document.querySelectorAll('.example-btn');
 
 // --- Modal Elements (for user-friendly alerts) ---
 const modal = document.createElement('div');
@@ -79,10 +84,75 @@ function clearContent() {
     errorMessage.classList.add('hidden');
     errorMessage.textContent = '';
     processBtn.disabled = false;
+    clearBtn.disabled = false; // Ensure clear button is enabled
     buttonText.textContent = 'Process Content';
     loadingSpinner.classList.add('hidden');
     lucide.createIcons(); // Re-initialize icons just in case
 }
+
+// --- New: Copy to Clipboard Logic ---
+copyButtons.forEach(button => {
+    button.addEventListener('click', async () => {
+        const targetId = button.dataset.target;
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+            let textToCopy = '';
+            if (targetElement.tagName === 'UL') {
+                // For ULs, get text content of each LI
+                Array.from(targetElement.children).forEach(li => {
+                    textToCopy += li.textContent + '\n';
+                });
+                textToCopy = textToCopy.trim(); // Remove trailing newline
+            } else {
+                // For DIVs, get innerText
+                textToCopy = targetElement.innerText;
+            }
+
+            try {
+                // Use navigator.clipboard.writeText if available and allowed
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy);
+                } else {
+                    // Fallback for older browsers or restricted environments (like some iframes)
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    textarea.style.position = 'fixed'; // Prevent scrolling to bottom
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                // Show "Copied!" feedback
+                const feedbackSpan = button.querySelector('.copy-feedback');
+                if (feedbackSpan) {
+                    feedbackSpan.classList.remove('hidden');
+                    setTimeout(() => {
+                        feedbackSpan.classList.add('hidden');
+                    }, 1500); // Hide after 1.5 seconds
+                }
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+                showAlert('Copy Failed', 'Could not copy text to clipboard. Please try manually.');
+            }
+        }
+    });
+});
+
+// --- New: Example Buttons Logic ---
+exampleButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const exampleType = button.dataset.exampleType;
+        const exampleContent = button.dataset.exampleContent;
+
+        contentInput.value = exampleContent; // Set the input field value
+        clearContent(); // Clear previous results (but keep input content)
+        contentInput.value = exampleContent; // Re-set input as clearContent clears it
+        // Optionally, trigger processing automatically:
+        // processBtn.click();
+    });
+});
+
 
 // Event listener for the Process button
 processBtn.addEventListener('click', async () => {
@@ -119,7 +189,7 @@ processBtn.addEventListener('click', async () => {
         }
 
         // Make a POST request to your backend server
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com/generate-content', {
+        const response = await fetch('https://ai-content-assistant-backend.onrender.com/generate-content', { // IMPORTANT: Replace with your actual Render URL
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
