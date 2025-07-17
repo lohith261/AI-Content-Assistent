@@ -154,7 +154,7 @@ async function fetchContentFromUrl(url) {
         } else if (text) {
             parts.push({ text: text });
         } else {
-            res.write(`data: ${JSON.stringify({ type: 'error', content: "Please provide text, a URL, or upload an image." })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'error', content: "Please provide text, a URL, or an image." })}\n\n`);
             res.end();
             return;
         }
@@ -199,7 +199,7 @@ async function fetchContentFromUrl(url) {
 
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
-            // CORRECTED LINE: Call generateContent() with stream: true option
+            // Call generateContent with stream: true option
             const streamResult = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
@@ -209,14 +209,14 @@ async function fetchContentFromUrl(url) {
             console.log('Received streamResult object:', streamResult);
 
             // Access the stream using the .stream property on the result object
-            if (!streamResult || typeof streamResult.stream !== 'function') { // Check if .stream is a function
-                console.error('Gemini API did not return a valid stream object or stream() method is missing.');
+            if (!streamResult || typeof streamResult.stream !== 'object' || typeof streamResult.stream[Symbol.asyncIterator] !== 'function') { // Check if .stream is an async iterable
+                console.error('Gemini API did not return a valid async iterable object via .stream property.');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
                 return;
             }
 
-            for await (const chunk of streamResult.stream()) { // Call the .stream() method
+            for await (const chunk of streamResult.stream) { // Iterate directly over streamResult.stream
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
