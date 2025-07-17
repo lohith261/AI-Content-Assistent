@@ -17,6 +17,27 @@ const copyButtons = document.querySelectorAll('.copy-btn');
 // New: Get all example buttons
 const exampleButtons = document.querySelectorAll('.example-btn');
 
+// New: Elements for history display
+const historyContainer = document.createElement('div'); // Will be appended to body
+historyContainer.id = 'historyContainer';
+historyContainer.className = 'bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl border border-gray-200 mt-8 hidden';
+historyContainer.innerHTML = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+        <span class="flex items-center"><i data-lucide="history" class="mr-2 text-purple-600"></i> Recent History</span>
+        <button id="clearHistoryBtn" class="text-gray-500 hover:text-red-600 transition duration-150 flex items-center text-base">
+            <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i> Clear History
+        </button>
+    </h2>
+    <div id="historyList" class="space-y-4">
+        <!-- History items will be loaded here -->
+    </div>
+`;
+document.body.appendChild(historyContainer); // Append early so we can get references
+
+const historyList = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+
 // --- Modal Elements (for user-friendly alerts) ---
 const modal = document.createElement('div');
 modal.id = 'alertModal';
@@ -90,7 +111,103 @@ function clearContent() {
     lucide.createIcons(); // Re-initialize icons just in case
 }
 
-// --- New: Copy to Clipboard Logic ---
+// --- New: Local Storage History Logic ---
+const HISTORY_KEY = 'aiContentAssistantHistory';
+
+function saveToHistory(input, response) {
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const newEntry = {
+        timestamp: new Date().toISOString(),
+        input: input,
+        response: response
+    };
+    history.unshift(newEntry); // Add to the beginning
+    // Keep only the last 5 entries to avoid clutter
+    history = history.slice(0, 5);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    displayHistory(); // Refresh history display
+}
+
+function displayHistory() {
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    historyList.innerHTML = ''; // Clear current list
+
+    if (history.length === 0) {
+        historyContainer.classList.add('hidden');
+        return;
+    }
+
+    historyContainer.classList.remove('hidden');
+    history.forEach((entry, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'bg-gray-100 p-4 rounded-lg border border-gray-200 relative group';
+        historyItem.innerHTML = `
+            <p class="text-xs text-gray-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p>
+            <p class="font-semibold text-gray-700 mb-2 truncate">Input: ${entry.input.substring(0, 100)}${entry.input.length > 100 ? '...' : ''}</p>
+            <p class="text-gray-600 text-sm mb-2 line-clamp-2">Summary: ${entry.response.summary || 'N/A'}</p>
+            <button class="view-history-btn absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    data-index="${index}" title="View Details">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+        `;
+        historyList.appendChild(historyItem);
+    });
+
+    // Add event listeners for view history buttons
+    document.querySelectorAll('.view-history-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const index = event.currentTarget.dataset.index;
+            const entry = history[index];
+            if (entry) {
+                // Populate main input/output with history item
+                contentInput.value = entry.input;
+                summaryOutput.innerHTML = entry.response.summary || 'No summary generated.';
+
+                actionItemsOutput.innerHTML = '';
+                if (entry.response.actionItems && entry.response.actionItems.length > 0 && entry.response.actionItems[0] !== "None identified.") {
+                    entry.response.actionItems.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        actionItemsOutput.appendChild(li);
+                    });
+                } else {
+                    actionItemsOutput.innerHTML = '<li>No action items identified.</li>';
+                }
+
+                nextStepsOutput.innerHTML = '';
+                if (entry.response.nextSteps && entry.response.nextSteps.length > 0 && entry.response.nextSteps[0] !== "No further suggestions.") {
+                    entry.response.nextSteps.forEach(step => {
+                        const li = document.createElement('li');
+                        li.textContent = step;
+                        nextStepsOutput.appendChild(li);
+                    });
+                } else {
+                    nextStepsOutput.innerHTML = '<li>No specific next steps suggested.</li>';
+                }
+
+                responseContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    responseContainer.classList.remove('opacity-0');
+                }, 10);
+                lucide.createIcons(); // Re-render icons
+                window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top
+            }
+        });
+    });
+    lucide.createIcons(); // Ensure icons in history items are rendered
+}
+
+function clearHistory() {
+    localStorage.removeItem(HISTORY_KEY);
+    displayHistory(); // Update display (will hide container)
+    showAlert('History Cleared', 'Your recent processing history has been removed.');
+}
+
+// Event listener for the Clear History button
+clearHistoryBtn.addEventListener('click', clearHistory);
+
+
+// --- Copy to Clipboard Logic ---
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
         const targetId = button.dataset.target;
@@ -139,7 +256,7 @@ copyButtons.forEach(button => {
     });
 });
 
-// --- New: Example Buttons Logic ---
+// --- Example Buttons Logic ---
 exampleButtons.forEach(button => {
     button.addEventListener('click', () => {
         const exampleType = button.dataset.exampleType;
@@ -149,7 +266,7 @@ exampleButtons.forEach(button => {
         clearContent(); // Clear previous results (but keep input content)
         contentInput.value = exampleContent; // Re-set input as clearContent clears it
         // Optionally, trigger processing automatically:
-        // processBtn.click();
+        // processBtn.click(); // Uncomment this line if you want examples to auto-process
     });
 });
 
@@ -241,6 +358,9 @@ processBtn.addEventListener('click', async () => {
             responseContainer.classList.remove('opacity-0');
         }, 10); // Small delay
 
+        // New: Save to history after successful processing
+        saveToHistory(inputContent, data);
+
 
     } catch (error) {
         console.error('Error processing content:', error);
@@ -274,3 +394,6 @@ contentInput.addEventListener('keydown', (event) => {
         processBtn.click();
     }
 });
+
+// New: Load history when the page loads
+document.addEventListener('DOMContentLoaded', displayHistory);
