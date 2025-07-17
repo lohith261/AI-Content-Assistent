@@ -199,24 +199,25 @@ async function fetchContentFromUrl(url) {
 
             console.log('Sending parts to Gemini:', JSON.stringify(parts, null, 2));
 
-            // CORRECTED LINE: For @google/generative-ai@0.24.1, iterate directly over streamResult when stream: true is passed
-            const streamResult = await model.generateContent({
+            const generateContentResponse = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
             }, { stream: true }); // Pass { stream: true } as the second argument
 
-            console.log('Received streamResult object:', streamResult);
+            console.log('Received generateContentResponse object:', generateContentResponse);
 
-            // Check if streamResult is an async iterable
-            if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
-                console.error('Gemini API did not return a valid async iterable object.');
+            // Access the stream property from the response object
+            const stream = generateContentResponse.stream;
+
+            if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
+                console.error('Gemini API did not return a valid async iterable object from .stream property.');
                 res.write(`data: ${JSON.stringify({ type: 'error', content: 'Gemini API did not return a valid stream. This might be a temporary issue or content-related block.' })}\n\n`);
                 res.end();
                 return;
             }
 
-            for await (const chunk of streamResult) { // Iterate directly over streamResult
+            for await (const chunk of stream) { // Iterate directly over the 'stream' variable
                 const chunkText = chunk.text();
                 fullResponseText += chunkText;
                 res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunkText })}\n\n`);
