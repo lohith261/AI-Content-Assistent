@@ -34,19 +34,17 @@ The backend is built with Node.js/Express and is ready for deployment on service
 | **Platform** | Deployed on **Vercel** (Frontend) and **Render** (Backend)                                                  |
 
 ### 📂 Project Structure
-
-
-├── .env                  \# Environment variables (local setup)
-├── .gitignore            \# Files to be ignored by Git
-├── node\_modules/         \# Node.js dependencies
-├── public/               \# All frontend static files
-│   ├── index.html        \# Main application page
-│   ├── script.js         \# Frontend logic
-│   └── style.css         \# Custom styles
-├── package.json          \# Project metadata and dependencies
-├── package-lock.json     \# Dependency lock file
-└── server.js             \# The Express backend server
-
+/
+├── .env                  # Environment variables (local setup)
+├── .gitignore            # Files to be ignored by Git
+├── node_modules/         # Node.js dependencies
+├── public/               # All frontend static files
+│   ├── index.html        # Main application page
+│   ├── script.js         # Frontend logic
+│   └── style.css         # Custom styles
+├── package.json          # Project metadata and dependencies
+├── package-lock.json     # Dependency lock file
+└── server.js             # The Express backend server
 
 
 ### ⚙️ Local Setup and Installation
