@@ -1,142 +1,108 @@
-AI Content Assistant
-This project is a web application that leverages the Google Gemini API to help users quickly summarize text content or web pages, extract key action items, and suggest next steps. It's designed to be a productivity tool for managing information overload, built with a focus on a clean user interface and robust AI integration.
+🚀 AI Content Assistant 🚀
+An intelligent web application powered by the Google Gemini 1.5 Flash model. This tool serves as a powerful productivity assistant, capable of analyzing content from multiple sources—including text, website URLs, and images—to provide you with concise summaries, actionable tasks, and insightful next steps.
 
-Features
-Content Summarization: Provides a concise, 3-5 sentence summary of any input text or web page.
+The backend is built with Node.js/Express and is ready for deployment on services like Render, while the frontend is a clean, responsive vanilla JS application.
 
-Action Item Extraction: Identifies and lists actionable tasks or follow-ups clearly mentioned or implied in the content.
+✨ Key Features
+✨ Multi-Modal Input: Process content from pasted text, live website URLs, or directly from uploaded images (e.g., screenshots of notes, diagrams).
 
-Suggested Next Steps: Offers relevant suggestions for further exploration or related information based on the analyzed content.
+📝 Intelligent Summarization: Distills long articles, notes, or text from images into concise, easy-to-digest summaries.
 
-URL Processing: Automatically fetches and processes content from provided website URLs.
+✅ Action Item Extraction: Automatically identifies and lists clear, actionable tasks and follow-ups from the provided content.
 
-User-Friendly Interface: Clean and responsive design using Tailwind CSS.
+💡 Suggested Next Steps: Provides intelligent recommendations for further reading, research topics, or related actions.
 
-Interactive Controls: "Process Content" button with loading indicator and a "Clear Content" button to reset inputs and outputs.
+🎛️ Customizable AI Parameters: Fine-tune the AI's creativity and response length by adjusting the Temperature and Max Output Tokens directly in the UI.
 
-Custom Alert Modals: Provides clear, non-intrusive error and information messages to the user.
+🌐 Live URL Scraping: Enter a URL, and the backend will automatically fetch, parse, and clean the web page's main content for analysis.
 
-Secure API Handling: Uses a Node.js backend to securely proxy requests to the Gemini API, preventing direct exposure of your API key on the client-side.
+🔐 Secure Backend: Uses a Node.js backend to handle all API calls securely, ensuring your Gemini API key is never exposed on the frontend.
 
-Technologies Used
-Frontend:
+📜 Processing History: Your last five analyses are automatically saved to your browser's local storage for quick access.
 
-HTML5
+☁️ Firestore Integration (Backend): The backend is equipped to save user processing history to Google Firestore when a userId is provided, offering a path for future multi-user support.
 
-CSS3 (with Tailwind CSS via CDN for rapid styling)
+🛠️ Tech Stack
+Area	Technology
+Frontend	HTML5, Tailwind CSS (via CDN), Vanilla JavaScript, Lucide Icons
+Backend	Node.js, Express.js, @google/generative-ai, axios, cheerio, cors, dotenv, firebase-admin
+Platform	Deployed on Vercel (Frontend) and Render (Backend)
 
-JavaScript (Vanilla JS)
-
-Lucide Icons (for modern UI icons)
-
-Backend:
-
-Node.js
-
-Express.js (for building the REST API)
-
-dotenv (for managing environment variables, specifically the API key)
-
-axios (for making HTTP requests to fetch external web page content)
-
-cheerio (for parsing HTML and extracting content from web pages)
-
-@google/generative-ai (Google Gemini API Node.js SDK)
-
-Setup and Installation
-Follow these steps to get the project up and running on your local machine.
+Export to Sheets
+📂 Project Structure
+/
+├── .env                  # Environment variables (local setup)
+├── .gitignore            # Files to be ignored by Git
+├── node_modules/         # Node.js dependencies
+├── public/               # All frontend static files
+│   ├── index.html        # Main application page
+│   ├── script.js         # Frontend logic
+│   └── style.css         # Custom styles
+├── package.json          # Project metadata and dependencies
+├── package-lock.json     # Dependency lock file
+└── server.js             # The Express backend server
+⚙️ Local Setup and Installation
+Follow these steps to run the project on your local machine.
 
 1. Prerequisites
-Node.js and npm: Make sure you have Node.js (which includes npm) installed. You can download it from nodejs.org.
+
+Node.js: Ensure you have Node.js v18 or later installed.
 
 Google Gemini API Key:
 
 Go to Google AI Studio.
 
-Sign in with your Google account.
+Create a new API key.
 
-Generate a new API key.
+Firebase Service Account (for backend history feature):
 
-Keep this key secure! You will need it in the next step.
+Go to your Firebase Console.
 
-2. Project Setup
-Create Project Directory:
+Select your project, go to Project Settings > Service accounts.
 
-mkdir ai-content-assistant
-cd ai-content-assistant
+Click "Generate new private key". This will download a JSON file. You will need the project_id, client_email, and private_key from this file.
 
-Initialize Node.js Project:
+2. Clone the Repository
 
-npm init -y
+Bash
 
-Install Backend Dependencies:
+git clone https://github.com/lohith261/AI-Content-Assistent.git
+cd AI-Content-Assistent
+3. Install Dependencies
 
-npm install express cors dotenv axios cheerio @google/generative-ai
+Bash
 
-Create .env file:
-In the root of your ai-content-assistant directory, create a file named .env and add your Gemini API key:
+npm install
+4. Create the Environment File
+Create a file named .env in the root of the project and add the following variables.
 
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+Code snippet
 
-Replace YOUR_GEMINI_API_KEY_HERE with the actual API key you obtained.
+# Your Google Gemini API Key
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
 
-Create server.js:
-In the root of your ai-content-assistant directory, create server.js and paste the provided backend code into it. (You have the latest version in our conversation history).
+# Your Firebase Service Account Credentials
+FIREBASE_PROJECT_ID="your-firebase-project-id"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_LINE_1\nYOUR_PRIVATE_KEY_LINE_2\n-----END PRIVATE KEY-----\n"
+Important: When copying the private_key from your Firebase JSON file, make sure to format it correctly in the .env file by replacing all literal newline characters with \n, as shown in the example.
 
-Create public Directory:
+5. Run the Application
+Start the backend server:
 
-mkdir public
+Bash
 
-Create Frontend Files:
-Inside the public directory, create the following files and paste the respective code:
+npm start
+You will see a message that the server is listening on port 3000. Now, open your browser and navigate to:
+http://localhost:3000
 
-public/index.html (You have the latest version in our conversation history).
+🚀 Future Enhancements
+User Authentication: Implement a full login system to associate processing history with specific users in Firestore.
 
-public/style.css (You have the latest version in our conversation history).
+Streaming Responses: Display the AI's response word-by-word as it's generated for a more dynamic and responsive user experience.
 
-public/script.js (You have the latest version in our conversation history).
+Direct-to-Task-Manager: Add buttons to export extracted action items to services like Trello, Asana, or Google Tasks.
 
-How to Run the Application
-Start the Backend Server:
-Open your terminal, navigate to the ai-content-assistant root directory, and run:
+Advanced Scraping: For websites that rely heavily on JavaScript, integrate a headless browser like Puppeteer for more reliable content extraction.
 
-node server.js
-
-You should see a message indicating the server is listening on port 3000.
-
-Open the Frontend in Your Browser:
-Once the server is running, open your web browser and go to:
-
-http://localhost:3000/index.html
-
-You can now paste text or a URL into the input area and click "Process Content" to see the AI assistant in action!
-
-Project Structure
-ai-content-assistant/
-├── .env
-├── node_modules/
-├── public/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-├── server.js
-└── package.json
-
-Potential Future Enhancements
-Local Storage/Session Management: Implement saving of processed content so users can revisit past summaries and action items.
-
-User Authentication: Allow users to create accounts and store their data securely in a database (e.g., Firestore).
-
-Content Filtering/Categorization: Add options to filter action items by priority or category, or categorize summarized content.
-
-Direct Integration with Task Managers: Buttons to export action items directly to popular task management tools (e.g., Trello, Asana, Google Tasks).
-
-Advanced URL Handling: More sophisticated web scraping for dynamic content (e.g., using Puppeteer or Playwright).
-
-Multi-modal Input: Extend to handle image inputs (e.g., summarize text from an image).
-
-Streaming Responses: Display Gemini's output word-by-word as it's generated for a more dynamic user experience.
-
-Customizable Prompts: Allow advanced users to tweak the prompts sent to Gemini for more control over the output.
-
-Rate Limit Handling: Implement more graceful handling of Gemini API rate limits.
+Custom Prompts: Allow users to create and save their own prompt templates for specialized tasks.
