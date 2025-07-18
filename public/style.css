@@ -1,75 +1,29 @@
 /* style.css */
 
-/*
-  Tailwind CSS is loaded via CDN in index.html, so most styling will be
-  done directly in the HTML classes. This file is for any custom CSS
-  or overrides if necessary, but for this project, it's mostly a placeholder
-  or for very specific global styles not easily handled by Tailwind.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* Custom font import (Inter) - already linked in HTML for simplicity */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-/* Apply Inter font family to all elements */
 body {
     font-family: 'Inter', sans-serif;
 }
 
-/* Basic styling for the body and container - mostly handled by Tailwind classes in HTML */
-/*
-body {
-    background-color: #f3f4f6;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 1rem;
+/* Style for the "Copied!" feedback tooltip */
+.copy-btn .copy-feedback {
+    position: absolute;
+    top: -28px;
+    right: -10px;
+    background-color: #10B981; /* green-500 */
+    color: white;
+    font-size: 0.75rem; /* text-xs */
+    padding: 2px 6px;
+    border-radius: 9999px; /* rounded-full */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none; /* So it doesn't block clicks */
 }
 
-.container {
-    background-color: #ffffff;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    padding: 2rem;
-    width: 100%;
-    max-width: 48rem;
-    border: 1px solid #e5e7eb;
-}
-*/
-
-/* Specific styles for the loading spinner (if not directly handled by Tailwind) */
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.animate-spin {
-    animation: spin 1s linear infinite;
-}
-
-/* Utility to hide elements */
-.hidden {
-    display: none;
-}
-
-/* Styling for the response output sections */
-#responseContainer h2 {
-    /* Tailwind classes are used directly in HTML, but if you needed to target these specifically: */
-    /* margin-bottom: 1rem; */
-    /* font-weight: 700; */
-    /* color: #1f2937; */
-}
-
-#responseContainer ul {
-    /* margin-left: 1.25rem; */
-}
-
-#responseContainer li {
-    /* margin-bottom: 0.5rem; */
+.copy-btn:active .copy-feedback,
+.copy-btn.copied .copy-feedback {
+    opacity: 1;
 }
 
 /* Ensure pre-wrap for text output to respect newlines from AI */
