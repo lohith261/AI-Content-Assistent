@@ -9,25 +9,27 @@ body {
 /* Style for the "Copied!" feedback tooltip */
 .copy-btn .copy-feedback {
     position: absolute;
-    top: -28px;
-    right: -10px;
-    background-color: #10B981; /* green-500 */
+    top: -28px; /* Position it above the button */
+    right: 50%;
+    transform: translateX(50%); /* Center it horizontally */
+    background-color: #10B981; /* Tailwind's green-500 */
     color: white;
     font-size: 0.75rem; /* text-xs */
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 9999px; /* rounded-full */
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
     pointer-events: none; /* So it doesn't block clicks */
+    white-space: nowrap; /* Prevent text wrapping */
 }
 
-.copy-btn:active .copy-feedback,
+/* When the button has the 'copied' class, make the feedback visible */
 .copy-btn.copied .copy-feedback {
     opacity: 1;
 }
 
 /* Ensure pre-wrap for text output to respect newlines from AI */
-#summaryOutput, #actionItemsOutput, #nextStepsOutput {
+#summaryOutput {
     white-space: pre-wrap;
     word-wrap: break-word;
 }

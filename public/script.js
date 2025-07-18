@@ -13,7 +13,7 @@ const buttonText = document.getElementById('buttonText');
 
 const copyButtons = document.querySelectorAll('.copy-btn');
 
-// History elements (now fetched from static HTML)
+// History elements
 const historyContainer = document.getElementById('historyContainer');
 const historyList = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
@@ -30,9 +30,6 @@ const imagePreview = document.getElementById('imagePreview');
 const imagePreviewImg = imagePreview.querySelector('img');
 const clearImageBtn = document.getElementById('clearImageBtn');
 let uploadedImageBase64 = null;
-
-// --- Modal for Alerts ---
-// (No changes needed to the modal logic itself)
 
 // --- Helper Functions ---
 function isValidUrl(string) {
@@ -64,6 +61,49 @@ function clearContent() {
     imagePreviewImg.src = '#';
     lucide.createIcons();
 }
+
+// --- Copy to Clipboard Logic (FIXED) ---
+copyButtons.forEach(button => {
+    button.addEventListener('click', async () => {
+        const targetId = button.dataset.target;
+        const targetElement = document.getElementById(targetId);
+
+        if (targetElement) {
+            let textToCopy = '';
+            if (targetElement.tagName === 'UL') {
+                // For lists, build a string from each list item
+                Array.from(targetElement.children).forEach(li => {
+                    // Use textContent to get clean text without HTML tags like icons
+                    textToCopy += `• ${li.textContent.trim()}\n`;
+                });
+            } else {
+                // For regular divs like the summary
+                textToCopy = targetElement.innerText;
+            }
+
+            textToCopy = textToCopy.trim();
+
+            if (!textToCopy) return; // Don't do anything if there's nothing to copy
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                
+                // Add 'copied' class to show feedback
+                button.classList.add('copied');
+                
+                // Remove the class after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                }, 2000);
+
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+                alert('Could not copy text. Please try manually.');
+            }
+        }
+    });
+});
+
 
 // --- Local Storage History ---
 const HISTORY_KEY = 'aiContentAssistantHistory';
@@ -108,7 +148,6 @@ function displayHistory() {
         historyItem.addEventListener('click', () => {
              const entryToLoad = history[index];
              if (entryToLoad) {
-                // Populate main input/output with history item
                 contentInput.value = entryToLoad.input || '';
                 if (entryToLoad.image) {
                     uploadedImageBase64 = entryToLoad.image;
@@ -119,8 +158,6 @@ function displayHistory() {
                     imagePreview.classList.add('hidden');
                     imagePreviewImg.src = '#';
                 }
-
-                // Display response from history
                 displayFinalResponse(entryToLoad.response);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
              }
@@ -142,8 +179,11 @@ processBtn.addEventListener('click', async () => {
     const temperature = parseFloat(temperatureInput.value);
     const maxOutputTokens = parseInt(maxTokensInput.value);
 
-    clearContent(); // Clear previous results but keep inputs
-    contentInput.value = inputContent; // Restore input
+    // Keep the inputs but clear the previous response
+    summaryOutput.innerHTML = '';
+    actionItemsOutput.innerHTML = '';
+    nextStepsOutput.innerHTML = '';
+    responseContainer.classList.add('opacity-0', 'hidden');
     
     if (inputContent === '' && !uploadedImageBase64) {
         alert('Please enter text, a URL, or upload an image.');
@@ -237,7 +277,6 @@ function resetButtonState() {
     processBtn.disabled = false;
 }
 
-
 // --- Event Listeners ---
 clearBtn.addEventListener('click', clearContent);
 temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
@@ -246,7 +285,7 @@ maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = ma
 imageUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
-        contentInput.value = ''; // Clear text if image is chosen
+        contentInput.value = '';
         const reader = new FileReader();
         reader.onload = (e) => {
             uploadedImageBase64 = e.target.result;
@@ -266,7 +305,7 @@ clearImageBtn.addEventListener('click', () => {
 
 contentInput.addEventListener('input', () => {
     if (contentInput.value.trim() !== '') {
-        clearImageBtn.click(); // Clear image if text is typed
+        clearImageBtn.click();
     }
 });
 
