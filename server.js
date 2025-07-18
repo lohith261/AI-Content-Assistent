@@ -1,4 +1,25 @@
-// server.js (Corrected and Final)
+It looks like you're on the absolute final step\! This new error is very subtle, but the log gives us everything we need to solve it.
+
+This is a classic issue when parsing AI-generated JSON. Congratulations on getting this far.
+
+### Analysis of the Final Error
+
+1.  **Previous Fix Worked:** Your log now shows `"Gemini API Response Text (Cleaned):"`, which means our last fix to handle the ` ```json ` wrapper is working.
+2.  **The New Error:** `SyntaxError: Unexpected non-whitespace character after JSON at position 960`.
+3.  **The Cause:** This error means that `JSON.parse()` found a complete, valid JSON object (e.g., `{...}`), but then it found *more text* that wasn't just a space or a newline. Your previous fix for removing the markdown wrapper was a bit too specific. Sometimes the AI might add an extra newline or have a slight variation in its output, causing our `substring` method to fail and leave the trailing ` ``` ` in the string.
+
+The most robust way to solve this, once and for all, is to not assume what text is around the JSON. Instead, we'll just find the JSON itself and extract it. We can do this by finding the first opening curly brace `{` and the very last closing curly brace `}`.
+
+### The Final, Most Robust Solution
+
+Here is the updated `server.js` file. This version replaces the simple string cleaning with a much more reliable method that extracts the JSON object, no matter what text or markdown the AI wraps around it.
+
+After this change, your application should be fully functional.
+
+### Complete `server.js` File (Final Version)
+
+```javascript
+// server.js (Final Corrected Version)
 
 // Import necessary modules
 require('dotenv').config(); // Loads environment variables from .env file
@@ -175,18 +196,9 @@ async function fetchContentFromUrl(url) {
 
             3.  **Suggested Next Steps**: Based on the content, suggest logical next steps, related topics for further exploration, or additional resources a user might find valuable. These should be broader suggestions beyond direct action items. If no relevant suggestions, return an array containing a single string: "No further suggestions."
 
-            Please provide the output in JSON format with the following keys and value types:
-            "summary": string
-            "actionItems": array of strings
-            "nextSteps": array of strings
+            IMPORTANT: You must respond with only a single, valid JSON object. Do not include any text, notes, or markdown formatting like \`\`\`json before or after the JSON object. The entire response must be parsable by JSON.parse.
 
-            Example of desired JSON structure:
-            {
-                "summary": "This is a concise summary of the content.",
-                "actionItems": ["Review report by Friday", "Schedule follow-up meeting"],
-                "nextSteps": ["Research related topic X", "Explore additional resources on Y"]
-            }
-            If a list is empty, it should contain "None identified." or "No further suggestions." as a single string element.
+            The JSON object must have these exact keys: "summary", "actionItems", "nextSteps".
         `;
         parts.unshift({ text: basePrompt });
 
@@ -201,19 +213,18 @@ async function fetchContentFromUrl(url) {
 
             const response = await result.response;
             let fullResponseText = response.text();
+            
+            console.log('Gemini API Response Text (Raw):', fullResponseText);
 
-            // ** FIX FOR JSON MARKDOWN **
-            // Clean the response text to remove the JSON markdown wrapper
-            if (fullResponseText.startsWith("```json")) {
-                fullResponseText = fullResponseText.substring(7, fullResponseText.length - 3).trim();
-            }
+            // ** ROBUST FIX FOR JSON EXTRACTION **
+            const firstBrace = fullResponseText.indexOf('{');
+            const lastBrace = fullResponseText.lastIndexOf('}');
 
-            console.log('Gemini API Response Text (Cleaned):', fullResponseText);
-
-            if (!fullResponseText) {
-                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected text content. The response might be empty or blocked by safety settings." })}\n\n`);
-                res.end();
-                return;
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                fullResponseText = fullResponseText.substring(firstBrace, lastBrace + 1);
+            } else {
+                // If no valid JSON object is found, throw an error
+                 throw new Error("AI response did not contain a valid JSON object.");
             }
 
             const parsedResponse = JSON.parse(fullResponseText);
@@ -272,3 +283,4 @@ async function fetchContentFromUrl(url) {
         console.log(`Server listening at http://localhost:${port}`);
         console.log(`Open your browser to http://localhost:${port}/index.html to use the app.`);
     });
+```
