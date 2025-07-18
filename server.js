@@ -1,4 +1,4 @@
-// server.js
+// server.js (Corrected)
 
 // Import necessary modules
 require('dotenv').config(); // Loads environment variables from .env file
@@ -18,8 +18,6 @@ const port = 3000;
 
 // Middleware setup
 app.use(cors()); // Enable CORS for all routes
-// app.use(express.json()); // No longer needed for GET requests with query params for EventSource
-// Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Firebase Admin SDK Initialization ---
@@ -195,42 +193,23 @@ async function fetchContentFromUrl(url) {
         try {
             res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
 
-            // Perform a non-streaming call to get the full response at once
-            const generateContentResponse = await model.generateContent({
+            // Step 1: Get the result object from the model
+            const result = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
             });
 
-            console.log('Received generateContentResponse object (non-streaming):', generateContentResponse);
+            // Step 2: **THIS IS THE FIX** -> Await the response promise from the result object
+            const response = await result.response;
 
-            // CORRECTED: Access the text safely with more detailed logging
-            let fullResponseText = '';
-            const candidate = generateContentResponse.candidates && generateContentResponse.candidates.length > 0 ? generateContentResponse.candidates[0] : null;
+            // Step 3: Now you can safely get the text from the resolved response
+            const fullResponseText = response.text();
+            
+            console.log('Gemini API Response Text:', fullResponseText); // For debugging
 
-            // NEW LOGGING: Log candidate and its content
-            console.log('Candidate object:', candidate);
-            if (candidate) {
-                console.log('Candidate content object:', candidate.content);
-                if (candidate.content) {
-                    console.log('Candidate content parts array:', candidate.content.parts);
-                }
-            }
-
-
-            if (candidate && candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-                const firstPart = candidate.content.parts[0];
-                if (firstPart.text) {
-                    fullResponseText = firstPart.text;
-                } else {
-                    console.error("Gemini response: First content part has no 'text' property. Full part:", firstPart);
-                }
-            } else {
-                console.error("Gemini response structure unexpected or content missing. Candidates or content parts not found. Full response:", generateContentResponse);
-            }
-
-            if (!fullResponseText) { // If text extraction failed
-                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected text content. Response might be empty or blocked." })}\n\n`);
+            if (!fullResponseText) {
+                res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected text content. The response might be empty or blocked by safety settings." })}\n\n`);
                 res.end();
                 return;
             }
