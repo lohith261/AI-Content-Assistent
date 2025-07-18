@@ -1,24 +1,3 @@
-It looks like you're on the absolute final step\! This new error is very subtle, but the log gives us everything we need to solve it.
-
-This is a classic issue when parsing AI-generated JSON. Congratulations on getting this far.
-
-### Analysis of the Final Error
-
-1.  **Previous Fix Worked:** Your log now shows `"Gemini API Response Text (Cleaned):"`, which means our last fix to handle the ` ```json ` wrapper is working.
-2.  **The New Error:** `SyntaxError: Unexpected non-whitespace character after JSON at position 960`.
-3.  **The Cause:** This error means that `JSON.parse()` found a complete, valid JSON object (e.g., `{...}`), but then it found *more text* that wasn't just a space or a newline. Your previous fix for removing the markdown wrapper was a bit too specific. Sometimes the AI might add an extra newline or have a slight variation in its output, causing our `substring` method to fail and leave the trailing ` ``` ` in the string.
-
-The most robust way to solve this, once and for all, is to not assume what text is around the JSON. Instead, we'll just find the JSON itself and extract it. We can do this by finding the first opening curly brace `{` and the very last closing curly brace `}`.
-
-### The Final, Most Robust Solution
-
-Here is the updated `server.js` file. This version replaces the simple string cleaning with a much more reliable method that extracts the JSON object, no matter what text or markdown the AI wraps around it.
-
-After this change, your application should be fully functional.
-
-### Complete `server.js` File (Final Version)
-
-```javascript
 // server.js (Final Corrected Version)
 
 // Import necessary modules
@@ -283,4 +262,3 @@ async function fetchContentFromUrl(url) {
         console.log(`Server listening at http://localhost:${port}`);
         console.log(`Open your browser to http://localhost:${port}/index.html to use the app.`);
     });
-```
