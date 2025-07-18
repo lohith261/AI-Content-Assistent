@@ -1,4 +1,4 @@
-// server.js (Corrected)
+// server.js (Corrected and Final)
 
 // Import necessary modules
 require('dotenv').config(); // Loads environment variables from .env file
@@ -193,20 +193,22 @@ async function fetchContentFromUrl(url) {
         try {
             res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
 
-            // Step 1: Get the result object from the model
             const result = await model.generateContent({
                 contents: [{ role: "user", parts: parts }],
                 generationConfig: generationConfig,
                 safetySettings: safetySettings
             });
 
-            // Step 2: **THIS IS THE FIX** -> Await the response promise from the result object
             const response = await result.response;
+            let fullResponseText = response.text();
 
-            // Step 3: Now you can safely get the text from the resolved response
-            const fullResponseText = response.text();
-            
-            console.log('Gemini API Response Text:', fullResponseText); // For debugging
+            // ** FIX FOR JSON MARKDOWN **
+            // Clean the response text to remove the JSON markdown wrapper
+            if (fullResponseText.startsWith("```json")) {
+                fullResponseText = fullResponseText.substring(7, fullResponseText.length - 3).trim();
+            }
+
+            console.log('Gemini API Response Text (Cleaned):', fullResponseText);
 
             if (!fullResponseText) {
                 res.write(`data: ${JSON.stringify({ type: 'error', content: "Gemini did not return expected text content. The response might be empty or blocked by safety settings." })}\n\n`);
@@ -214,10 +216,8 @@ async function fetchContentFromUrl(url) {
                 return;
             }
 
-            // Parse the full response
             const parsedResponse = JSON.parse(fullResponseText);
 
-            // Ensure actionItems and nextSteps are always arrays
             if (parsedResponse.actionItems && !Array.isArray(parsedResponse.actionItems)) { parsedResponse.actionItems = [parsedResponse.actionItems]; }
             if (parsedResponse.nextSteps && !Array.isArray(parsedResponse.nextSteps)) { parsedResponse.nextSteps = [parsedResponse.nextSteps]; }
 
@@ -232,9 +232,8 @@ async function fetchContentFromUrl(url) {
                 console.log(`Saved entry for user ${userId}`);
             }
 
-            // Send the full response as a single 'final' SSE event
             res.write(`data: ${JSON.stringify({ type: 'final', content: parsedResponse })}\n\n`);
-            res.end(); // End the response here as we're not streaming chunks
+            res.end();
 
         } catch (error) {
             console.error("Error calling Gemini API or Firestore:", error);
