@@ -7,6 +7,12 @@ An intelligent web application powered by the Google Gemini 1.5 Flash model. Thi
 
 The backend is built with Node.js/Express and is ready for deployment on services like Render, while the frontend is a clean, responsive vanilla JS application.
 
+---
+
+### 🔗 [**Live Demo**](https://ai-content-assistent.vercel.app/)
+
+---
+
 ### ✨ Key Features
 
 * **✨ Multi-Modal Input:** Process content from pasted text, live website URLs, or directly from uploaded images (e.g., screenshots of notes, diagrams).
@@ -29,7 +35,7 @@ The backend is built with Node.js/Express and is ready for deployment on service
 
 ### 📂 Project Structure
 
-/
+
 ├── .env                  \# Environment variables (local setup)
 ├── .gitignore            \# Files to be ignored by Git
 ├── node\_modules/         \# Node.js dependencies
