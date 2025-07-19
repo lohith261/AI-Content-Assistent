@@ -1,4 +1,4 @@
-// server.js (Updated for Streaming)
+// server.js (Updated for POST Requests)
 
 // Import necessary modules
 require('dotenv').config();
@@ -17,6 +17,9 @@ const port = 3000;
 // Middleware setup
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
+// IMPORTANT: Add JSON middleware to parse POST bodies and set a 10mb limit for images
+app.use(express.json({ limit: '10mb' }));
+
 
 // --- Firebase Admin SDK Initialization ---
 try {
@@ -31,7 +34,6 @@ try {
     console.log('Firebase Admin SDK initialized successfully.');
 } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error.message);
-    // Continue without full Firebase functionality if not configured
 }
 
 const db = admin.firestore();
@@ -70,7 +72,8 @@ async function fetchContentFromUrl(url) {
     }
 }
 
-app.get('/generate-content', async (req, res) => {
+// --- CHANGE: Use app.post instead of app.get ---
+app.post('/generate-content', async (req, res) => {
     // --- Set up Server-Sent Events (SSE) ---
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -83,12 +86,13 @@ app.get('/generate-content', async (req, res) => {
     };
 
     try {
-        const { text, url, image, temperature, maxOutputTokens, userId } = req.query;
+        // --- CHANGE: Read data from req.body instead of req.query ---
+        const { text, url, image, temperature, maxOutputTokens, userId } = req.body;
         let parts = [];
 
         // --- Build the prompt for the AI ---
         if (image) {
-            const [mimeType] = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
+            const mimeType = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1];
             parts.push(fileToGenerativePart(image, mimeType));
             parts.push({ text: text || "Describe this image and identify relevant information." });
         } else if (url) {
@@ -112,7 +116,7 @@ app.get('/generate-content', async (req, res) => {
         const generationConfig = {
             temperature: parseFloat(temperature) || 0.7,
             maxOutputTokens: parseInt(maxOutputTokens) || 2048,
-            responseMimeType: "application/json", // Important: Tell Gemini to output JSON directly
+            responseMimeType: "application/json",
         };
 
         // --- Use generateContentStream ---
@@ -122,17 +126,15 @@ app.get('/generate-content', async (req, res) => {
             safetySettings,
         });
 
-        // --- Stream the response back to the client ---
         let fullResponseText = "";
         for await (const chunk of result.stream) {
             const chunkText = chunk.text();
             fullResponseText += chunkText;
-            sendEvent('chunk', { text: chunkText }); // Send each piece to the frontend
+            sendEvent('chunk', { text: chunkText });
         }
         
-        sendEvent('final', {}); // Signal that the stream is complete
+        sendEvent('final', {});
 
-        // --- Save the full response to Firestore after streaming is done ---
         if (userId && db) {
             const finalResponse = JSON.parse(fullResponseText);
             const entry = {
@@ -147,7 +149,7 @@ app.get('/generate-content', async (req, res) => {
         console.error("Error during content generation:", error);
         sendEvent('error', { message: `An error occurred: ${error.message}` });
     } finally {
-        res.end(); // End the SSE connection
+        res.end();
     }
 });
 

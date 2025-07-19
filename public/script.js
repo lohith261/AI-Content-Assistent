@@ -1,4 +1,4 @@
-// script.js (Updated for Streaming)
+// script.js (Updated for POST requests with fetch)
 
 // --- Get references to DOM elements ---
 const contentInput = document.getElementById('contentInput');
@@ -125,7 +125,7 @@ function clearHistory() {
 }
 clearHistoryBtn.addEventListener('click', clearHistory);
 
-// --- Main Process Button Logic ---
+// --- Main Process Button Logic (Using Fetch API) ---
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedImageBase64) {
@@ -133,7 +133,6 @@ processBtn.addEventListener('click', async () => {
         return;
     }
 
-    // Prepare UI for processing
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
@@ -142,12 +141,12 @@ processBtn.addEventListener('click', async () => {
     nextStepsOutput.innerHTML = '';
     responseContainer.classList.remove('hidden', 'opacity-0');
 
-    let fullResponseText = ""; // To store the complete JSON string
+    let fullResponseText = "";
 
     try {
         const payload = {
             temperature: parseFloat(temperatureInput.value),
-            maxOutputTokens: parseInt(maxTokensInput.value)
+            maxOutputTokens: parseInt(maxTokensInput.value),
         };
         if (uploadedImageBase64) {
             payload.image = uploadedImageBase64;
@@ -158,50 +157,56 @@ processBtn.addEventListener('click', async () => {
             payload.text = inputContent;
         }
 
-        const queryString = new URLSearchParams(payload).toString();
-        // Use your correct backend URL here
-        const eventSource = new EventSource(`https://ai-content-assistant-backend.onrender.com/generate-content?${queryString}`);
+        const response = await fetch(`https://ai-content-assistant-backend.onrender.com/generate-content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
 
-        eventSource.onmessage = (event) => {
-            const parsedData = JSON.parse(event.data);
+        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-            if (parsedData.type === 'chunk') {
-                fullResponseText += parsedData.data.text;
-                // Update the UI with the partial text for a live effect
-                // A simple approach is to just put the raw text in the summary box for now
-                summaryOutput.textContent = fullResponseText;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-            } else if (parsedData.type === 'final') {
-                eventSource.close();
-                // Now parse the complete JSON and display it properly
-                const finalResponse = JSON.parse(fullResponseText);
-                displayFinalResponse(finalResponse);
-                saveToHistory(inputContent || "Image Input", finalResponse, uploadedImageBase64);
-                resetButtonState();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-            } else if (parsedData.type === 'error') {
-                eventSource.close();
-                alert(`Processing Error: ${parsedData.data.message}`);
-                resetButtonState();
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data:')) {
+                    const jsonData = line.substring(5).trim();
+                    if (!jsonData) continue;
+                    
+                    const parsedData = JSON.parse(jsonData);
+
+                    if (parsedData.type === 'chunk') {
+                        fullResponseText += parsedData.data.text;
+                        summaryOutput.textContent = fullResponseText;
+                    } else if (parsedData.type === 'final') {
+                        const finalResponse = JSON.parse(fullResponseText);
+                        displayFinalResponse(finalResponse);
+                        saveToHistory(inputContent || "Image Input", finalResponse, uploadedImageBase64);
+                        resetButtonState();
+                    } else if (parsedData.type === 'error') {
+                        throw new Error(parsedData.data.message);
+                    }
+                }
             }
-        };
-
-        eventSource.onerror = (error) => {
-            eventSource.close();
-            console.error('EventSource failed:', error);
-            alert('Network Error: Failed to connect to the server.');
-            resetButtonState();
-        };
+        }
 
     } catch (error) {
-        console.error('Error initiating request:', error);
-        alert(`Request Error: ${error.message}.`);
+        console.error('Request failed:', error);
+        alert(`An error occurred: ${error.message}`);
         resetButtonState();
     }
 });
 
 function displayFinalResponse(finalResponse) {
-    // This function now just formats the final, complete response
     summaryOutput.textContent = finalResponse.summary || 'No summary generated.';
     
     actionItemsOutput.innerHTML = '';
