@@ -1,8 +1,7 @@
 /**
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
- * Includes styles for the dark theme, interactive "Tracer Border" effect,
- * and multiple theme options.
+ * Includes styles for theming, scroll animations, and all previous UI features.
  */
 
 /* Import the Inter font family */
@@ -47,7 +46,6 @@ body {
     overflow: hidden;
 }
 
-/* This pseudo-element creates the gradient that will act as our border */
 .glass-card::before {
     content: '';
     position: absolute;
@@ -60,31 +58,41 @@ body {
     transition: opacity 0.3s ease-in-out;
 }
 
-/* On hover, make the gradient border visible */
 .glass-card:hover::before {
     opacity: 1;
 }
 
-/* This pseudo-element creates the dark "inner" part of the card, sitting on top of the gradient */
 .glass-card::after {
     content: '';
     position: absolute;
-    inset: 1px; /* Creates a 1px gap, revealing the gradient behind it */
-    background: #161b22; /* A slightly lighter dark color for the card's surface */
+    inset: 1px;
+    background: #161b22;
     border-radius: 1rem;
 }
 
-/* All content inside the card must have a higher z-index to appear above the ::after element */
 .card-content {
     position: relative;
     z-index: 10;
 }
 
-/* The keyframes for the spinning animation of the gradient */
 @keyframes spin {
     100% {
         transform: rotate(360deg);
     }
+}
+
+
+/* --- NEW: Scroll Animation Styles --- */
+/* The initial state of elements that will be animated on scroll */
+.scroll-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+/* The final state when the element is visible */
+.scroll-animate.in-view {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 

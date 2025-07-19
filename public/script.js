@@ -97,10 +97,6 @@ function saveToHistory(input, response, fileInfo = null) {
     displayHistory();
 }
 
-/**
- * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
- * This function is updated to include the 'card-content' wrapper for proper styling.
- */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -111,20 +107,14 @@ function displayHistory() {
     historyContainer.classList.remove('hidden');
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
-        // Set the main class for the card
-        historyItem.className = 'glass-card relative group cursor-pointer';
-        
+        historyItem.className = 'glass-card';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
-        
-        // --- THIS IS THE FIX ---
-        // The content is now wrapped in a 'card-content' div to ensure it's visible.
         historyItem.innerHTML = `
             <div class="card-content p-3">
                 <p class="text-xs text-slate-400 mb-2">${new Date(entry.timestamp).toLocaleString()}</p>
                 <p class="font-semibold text-slate-200 truncate">${displayInput}</p>
             </div>
         `;
-        
         historyItem.dataset.index = index;
         historyList.appendChild(historyItem);
 
@@ -180,7 +170,7 @@ processBtn.addEventListener('click', async () => {
     try {
         const payload = {
             temperature: parseFloat(temperatureInput.value),
-            maxOutputTokens: parseInt(maxOutputTokens),
+            maxOutputTokens: parseInt(maxTokensInput.value),
         };
 
         if (uploadedFile) {
@@ -360,15 +350,17 @@ contentInput.addEventListener('input', () => {
 
 // --- THEME SWITCHER LOGIC ---
 function setTheme(themeName) {
-    document.body.className = document.body.className.replace(/theme-\w+/g, '');
+    document.body.className = document.body.className.replace(/theme-\w+/g, '').trim();
     document.body.classList.add(themeName);
     localStorage.setItem('aiAssistantTheme', themeName);
 }
 
 themeToggleBtn.addEventListener('click', () => {
     themePanel.classList.toggle('hidden');
-    themePanel.classList.toggle('opacity-0');
-    themePanel.classList.toggle('scale-95');
+    setTimeout(() => {
+        themePanel.classList.toggle('opacity-0');
+        themePanel.classList.toggle('scale-95');
+    }, 10);
 });
 
 themeButtons.forEach(button => {
@@ -378,6 +370,20 @@ themeButtons.forEach(button => {
     });
 });
 
+// --- SCROLL ANIMATION LOGIC ---
+function initializeScrollAnimations() {
+    const animatedElements = document.querySelectorAll('.scroll-animate');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('in-view');
+            }
+        });
+    }, { threshold: 0.1 });
+    animatedElements.forEach(el => observer.observe(el));
+}
+
+
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     displayHistory();
@@ -385,5 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('aiAssistantTheme') || 'theme-midnight';
     setTheme(savedTheme);
     
+    initializeScrollAnimations();
+
     lucide.createIcons();
 });
