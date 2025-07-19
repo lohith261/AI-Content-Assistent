@@ -2,7 +2,7 @@
  * @file script.js
  * @description This file contains all the client-side JavaScript for the AI Content Assistant application.
  * It handles user interactions, API requests via the Fetch API with streaming, and dynamic UI updates,
- * including the interactive Aurora effect.
+ * including the interactive Aurora effect and loading skeletons.
  */
 
 // --- DOM ELEMENT REFERENCES ---
@@ -28,6 +28,11 @@ const fileUpload = document.getElementById('fileUpload');
 const filePreview = document.getElementById('filePreview');
 const filePreviewName = document.getElementById('filePreviewName');
 const clearFileBtn = document.getElementById('clearFileBtn');
+// NEW: Add references to skeleton loaders
+const summarySkeleton = document.getElementById('summarySkeleton');
+const actionItemsSkeleton = document.getElementById('actionItemsSkeleton');
+const nextStepsSkeleton = document.getElementById('nextStepsSkeleton');
+
 
 // --- GLOBAL VARIABLES ---
 let uploadedFile = null; // Stores the currently uploaded file data (name, type, base64 content).
@@ -169,6 +174,7 @@ processBtn.addEventListener('click', async () => {
         return;
     }
 
+    // Prepare the UI for a new request.
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
@@ -177,6 +183,14 @@ processBtn.addEventListener('click', async () => {
     nextStepsOutput.innerHTML = '';
     responseContainer.classList.remove('hidden', 'opacity-0');
     document.querySelectorAll('.animate-slide-in').forEach(el => el.classList.remove('animate-slide-in'));
+
+    // --- NEW: Show skeleton loaders and hide actual content areas ---
+    summarySkeleton.classList.remove('hidden');
+    actionItemsSkeleton.classList.remove('hidden');
+    nextStepsSkeleton.classList.remove('hidden');
+    summaryOutput.classList.add('hidden');
+    actionItemsOutput.classList.add('hidden');
+    nextStepsOutput.classList.add('hidden');
 
     let fullResponseText = "";
     let historyInput = inputContent;
@@ -231,6 +245,7 @@ async function processStream(response) {
     const decoder = new TextDecoder();
     let buffer = '';
     let fullResponseText = "";
+    let isFirstChunk = true; // Flag to handle the first chunk
 
     while (true) {
         const { done, value } = await reader.read();
@@ -248,8 +263,19 @@ async function processStream(response) {
                 const parsedData = JSON.parse(jsonData);
 
                 if (parsedData.type === 'chunk') {
+                    // On the first chunk of data, hide the skeletons and show the content areas.
+                    if (isFirstChunk) {
+                        summarySkeleton.classList.add('hidden');
+                        actionItemsSkeleton.classList.add('hidden');
+                        nextStepsSkeleton.classList.add('hidden');
+                        summaryOutput.classList.remove('hidden');
+                        actionItemsOutput.classList.remove('hidden');
+                        nextStepsOutput.classList.remove('hidden');
+                        isFirstChunk = false;
+                    }
+
                     fullResponseText += parsedData.data.text;
-                    summaryOutput.textContent = fullResponseText;
+                    summaryOutput.textContent = fullResponseText; // Live update
                 } else if (parsedData.type === 'final') {
                     const finalResponse = JSON.parse(fullResponseText);
                     displayFinalResponse(finalResponse);
@@ -268,6 +294,14 @@ async function processStream(response) {
  * @param {object} finalResponse The fully parsed JSON object from the AI.
  */
 function displayFinalResponse(finalResponse) {
+    // Hide skeletons and show content just in case they are still visible
+    summarySkeleton.classList.add('hidden');
+    actionItemsSkeleton.classList.add('hidden');
+    nextStepsSkeleton.classList.add('hidden');
+    summaryOutput.classList.remove('hidden');
+    actionItemsOutput.classList.remove('hidden');
+    nextStepsOutput.classList.remove('hidden');
+
     summaryOutput.closest('.glass-card').classList.add('animate-slide-in');
     actionItemsOutput.closest('.glass-card').classList.add('animate-slide-in');
     nextStepsOutput.closest('.glass-card').classList.add('animate-slide-in');
