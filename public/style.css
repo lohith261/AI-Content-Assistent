@@ -1,7 +1,8 @@
 /**
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
- * Includes styles for theming, scroll animations, and all previous UI features.
+ * Includes styles for the dark theme, interactive "Tracer Border" effect,
+ * and multiple theme options.
  */
 
 /* Import the Inter font family */
@@ -10,41 +11,34 @@
 body {
     font-family: 'Inter', sans-serif;
     /* Add a transition for smooth background changes when switching themes */
-    transition: background 0.5s ease-in-out;
+    transition: background-color 0.5s ease-in-out;
 }
 
-/* --- Animated Gradient Background & THEMES --- */
-@keyframes gradient-animation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
+/* --- THEMES --- */
+/* Each theme class changes the body background and the conic-gradient for the tracer border */
 
 /* Default Theme: "Midnight" */
-.theme-midnight {
-    background: linear-gradient(-45deg, #1b2735, #090a0f, #2c3e50, #2c3e50);
-    background-size: 400% 400%;
-    animation: gradient-animation 25s ease infinite;
+.theme-midnight { background-color: #0d1117; }
+.theme-midnight .glass-card::before {
+    background: conic-gradient(from 180deg at 50% 50%, #8A2BE2, #4169E1, #00FFFF, #8A2BE2);
 }
+
 /* New Theme: "Sunset" */
-.theme-sunset {
-    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-    background-size: 400% 400%;
-    animation: gradient-animation 15s ease infinite;
+.theme-sunset { background-color: #2a2a2a; }
+.theme-sunset .glass-card::before {
+    background: conic-gradient(from 180deg at 50% 50%, #ff7e5f, #feb47b, #ff7e5f);
 }
+
 /* New Theme: "Ocean" */
-.theme-ocean {
-    background: linear-gradient(-45deg, #00c6ff, #0072ff, #0052D4, #4364F7);
-    background-size: 400% 400%;
-    animation: gradient-animation 20s ease infinite;
+.theme-ocean { background-color: #001f3f; }
+.theme-ocean .glass-card::before {
+    background: conic-gradient(from 180deg at 50% 50%, #2980B9, #6DD5FA, #FFFFFF, #2980B9);
 }
 
 
-/* --- Glassmorphism Effect with Interactive Aurora --- */
+/* --- Tracer Border Card Styles --- */
 .glass-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -53,64 +47,55 @@ body {
     overflow: hidden;
 }
 
+/* This pseudo-element creates the gradient that will act as our border */
 .glass-card::before {
     content: '';
     position: absolute;
-    left: var(--mouse-x);
-    top: var(--mouse-y);
-    width: 200px;
-    height: 200px;
-    background-image: radial-gradient(
-        circle,
-        rgba(255, 255, 255, 0.4) 0%,
-        rgba(255, 255, 255, 0) 80%
-    );
-    transform: translate(-50%, -50%);
+    width: 150%;
+    height: 150%;
+    top: -25%;
+    left: -25%;
     opacity: 0;
+    animation: spin 4s linear infinite;
     transition: opacity 0.3s ease-in-out;
-    pointer-events: none;
 }
 
+/* On hover, make the gradient border visible */
 .glass-card:hover::before {
     opacity: 1;
 }
 
-/* --- NEW: Scroll Animation Styles --- */
-/* The initial state of elements that will be animated on scroll */
-.scroll-animate {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+/* This pseudo-element creates the dark "inner" part of the card, sitting on top of the gradient */
+.glass-card::after {
+    content: '';
+    position: absolute;
+    inset: 1px; /* Creates a 1px gap, revealing the gradient behind it */
+    background: #161b22; /* A slightly lighter dark color for the card's surface */
+    border-radius: 1rem;
 }
-/* The final state when the element is visible */
-.scroll-animate.in-view {
-    opacity: 1;
-    transform: translateY(0);
+
+/* All content inside the card must have a higher z-index to appear above the ::after element */
+.card-content {
+    position: relative;
+    z-index: 10;
+}
+
+/* The keyframes for the spinning animation of the gradient */
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 
-/* --- NEW: Theme Switcher Styles --- */
-#themeSwitcher {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    z-index: 50;
-}
-#themePanel {
-    transform-origin: bottom right;
-}
-
-/* --- Animation for response cards appearing --- */
+/* --- Other styles --- */
 @keyframes slide-in-fade-in {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-slide-in {
     animation: slide-in-fade-in 0.5s ease-out forwards;
 }
-
-/* --- Icon Animation Styles --- */
 .copy-btn .copy-icon {
     opacity: 1;
     transform: scale(1);
@@ -127,8 +112,6 @@ body {
     opacity: 1;
     transform: scale(1);
 }
-
-/* Style for the "Copied!" feedback tooltip */
 .copy-btn .copy-feedback {
     position: absolute;
     top: -28px;
@@ -144,12 +127,9 @@ body {
     pointer-events: none;
     white-space: nowrap;
 }
-
 .copy-btn.copied .copy-feedback {
     opacity: 1;
 }
-
-/* --- Loading Skeleton Styles --- */
 .skeleton {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 0.25rem;
@@ -160,7 +140,6 @@ body {
     height: 1em;
     margin-bottom: 0.5em;
 }
-
 .skeleton::after {
     content: '';
     position: absolute;
@@ -177,14 +156,22 @@ body {
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite;
 }
-
 @keyframes shimmer {
     100% {
         transform: translateX(100%);
     }
 }
-
 #summaryOutput {
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+/* Theme Switcher Styles */
+#themeSwitcher {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 50;
+}
+#themePanel {
+    transform-origin: bottom right;
 }

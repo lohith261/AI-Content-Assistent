@@ -12,156 +12,167 @@
 <body class="font-inter text-white p-4 sm:p-6 lg:p-8">
 
     <div class="w-full max-w-7xl mx-auto">
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-center mb-2">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-center mb-2 bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
             AI Content Assistant
         </h1>
-        <p class="text-slate-200 mb-10 text-center max-w-2xl mx-auto">
+        <p class="text-slate-400 mb-10 text-center max-w-2xl mx-auto">
             Your intelligent partner to summarize content, extract action items, and get next steps using Gemini AI.
         </p>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            <aside class="lg:col-span-1 space-y-8 scroll-animate" style="transition-delay: 100ms;">
-                <div class="glass-card p-6">
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <i data-lucide="sliders-horizontal" class="mr-2 text-white"></i> AI Settings
-                    </h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="temperatureInput" class="block text-slate-200 text-sm font-semibold mb-2">
-                                Temperature (Creativity): <span id="temperatureValue" class="font-normal text-slate-300">0.7</span>
-                            </label>
-                            <input type="range" id="temperatureInput" min="0" max="1" step="0.1" value="0.7" class="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white">
-                        </div>
-                        <div>
-                            <label for="maxTokensInput" class="block text-slate-200 text-sm font-semibold mb-2">
-                                Max Output Tokens: <span id="maxTokensValue" class="font-normal text-slate-300">2048</span>
-                            </label>
-                            <input type="range" id="maxTokensInput" min="50" max="4096" step="50" value="2048" class="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white">
+            <aside class="lg:col-span-1 space-y-8">
+                <div class="glass-card">
+                    <div class="card-content p-6">
+                        <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <i data-lucide="sliders-horizontal" class="mr-2 text-white"></i> AI Settings
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="temperatureInput" class="block text-slate-300 text-sm font-semibold mb-2">
+                                    Temperature (Creativity): <span id="temperatureValue" class="font-normal text-slate-400">0.7</span>
+                                </label>
+                                <input type="range" id="temperatureInput" min="0" max="1" step="0.1" value="0.7" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white">
+                            </div>
+                            <div>
+                                <label for="maxTokensInput" class="block text-slate-300 text-sm font-semibold mb-2">
+                                    Max Output Tokens: <span id="maxTokensValue" class="font-normal text-slate-400">2048</span>
+                                </label>
+                                <input type="range" id="maxTokensInput" min="50" max="4096" step="50" value="2048" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="historyContainer" class="glass-card p-6 hidden">
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center justify-between">
-                        <span class="flex items-center"><i data-lucide="history" class="mr-2 text-white"></i> Recent History</span>
-                        <button id="clearHistoryBtn" class="text-slate-300 hover:text-white transition duration-150 flex items-center text-sm p-1 rounded-md hover:bg-white/10">
-                            <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i> Clear
-                        </button>
-                    </h2>
-                    <div id="historyList" class="space-y-4">
-                        </div>
+                <div id="historyContainer" class="glass-card hidden">
+                   <div class="card-content p-6">
+                        <h2 class="text-xl font-bold text-white mb-4 flex items-center justify-between">
+                            <span class="flex items-center"><i data-lucide="history" class="mr-2 text-white"></i> Recent History</span>
+                            <button id="clearHistoryBtn" class="text-slate-400 hover:text-white transition duration-150 flex items-center text-sm p-1 rounded-md hover:bg-white/10">
+                                <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i> Clear
+                            </button>
+                        </h2>
+                        <div id="historyList" class="space-y-4">
+                            </div>
+                    </div>
                 </div>
             </aside>
 
-            <main class="lg:col-span-2 space-y-8 scroll-animate" style="transition-delay: 200ms;">
-                <div class="glass-card p-6 sm:p-8">
-                    <div>
-                        <label for="contentInput" class="block text-slate-200 text-sm font-semibold mb-2">
-                            Enter Text or a URL
-                        </label>
-                        <textarea id="contentInput" class="w-full p-4 border border-slate-300/50 rounded-lg focus:ring-2 focus:ring-white focus:border-transparent transition duration-200 ease-in-out text-slate-800 bg-white/80 placeholder:text-slate-500" rows="8" placeholder="Paste your article, notes, or a website URL here..."></textarea>
-                    </div>
+            <main class="lg:col-span-2 space-y-8">
+                <div class="glass-card">
+                    <div class="card-content p-6 sm:p-8">
+                        <div>
+                            <label for="contentInput" class="block text-slate-300 text-sm font-semibold mb-2">
+                                Enter Text or a URL
+                            </label>
+                            <textarea id="contentInput" class="w-full p-4 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 ease-in-out text-slate-300 bg-slate-800 placeholder:text-slate-500" rows="8" placeholder="Paste your article, notes, or a website URL here..."></textarea>
+                        </div>
 
-                    <div class="my-4 text-center text-sm text-slate-200">OR UPLOAD A FILE</div>
+                        <div class="my-4 text-center text-sm text-slate-400">OR UPLOAD A FILE</div>
 
-                    <div>
-                        <input type="file" id="fileUpload" 
-                               accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt" 
-                               class="w-full text-slate-100 text-sm
-                                      file:mr-4 file:py-2 file:px-4
-                                      file:rounded-full file:border-0
-                                      file:text-sm file:font-semibold
-                                      file:bg-white/20 file:text-white
-                                      hover:file:bg-white/30 transition duration-200 ease-in-out cursor-pointer" 
-                               aria-label="Upload an image or document for analysis">
+                        <div>
+                            <input type="file" id="fileUpload" 
+                                   accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt" 
+                                   class="w-full text-slate-300 text-sm
+                                          file:mr-4 file:py-2 file:px-4
+                                          file:rounded-full file:border-0
+                                          file:text-sm file:font-semibold
+                                          file:bg-slate-700 file:text-white
+                                          hover:file:bg-slate-600 transition duration-200 ease-in-out cursor-pointer" 
+                                   aria-label="Upload an image or document for analysis">
+                            
+                            <div id="filePreview" class="mt-4 hidden relative w-full h-auto bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                <div id="filePreviewName" class="flex items-center text-white font-medium"></div>
+                                <button id="clearFileBtn" class="absolute top-3 right-3 text-slate-400 hover:text-white transition">
+                                    <i data-lucide="x" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
                         
-                        <div id="filePreview" class="mt-4 hidden relative w-full h-auto bg-black/20 border border-white/30 rounded-lg p-4">
-                            <div id="filePreviewName" class="flex items-center text-white font-medium"></div>
-                            <button id="clearFileBtn" class="absolute top-3 right-3 text-slate-300 hover:text-white transition">
-                                <i data-lucide="x" class="w-5 h-5"></i>
+                        <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                            <button id="processBtn" class="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-200 ease-in-out flex items-center justify-center transform hover:scale-105">
+                                <span id="buttonText">Process Content</span>
+                                <svg id="loadingSpinner" class="animate-spin h-5 w-5 text-white ml-3 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                            <button id="clearBtn" class="flex-1 bg-slate-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 transition duration-200 ease-in-out flex items-center justify-center">
+                                <i data-lucide="x-circle" class="mr-2"></i> Clear
                             </button>
                         </div>
                     </div>
-                    
-                    <div class="flex flex-col sm:flex-row gap-4 mt-6">
-                        <button id="processBtn" class="flex-1 bg-white/90 text-purple-700 font-bold py-3 px-4 rounded-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200 ease-in-out flex items-center justify-center transform hover:scale-105">
-                            <span id="buttonText">Process Content</span>
-                            <svg id="loadingSpinner" class="animate-spin h-5 w-5 text-purple-700 ml-3 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </button>
-                        <button id="clearBtn" class="flex-1 bg-white/20 text-white font-bold py-3 px-4 rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white transition duration-200 ease-in-out flex items-center justify-center">
-                            <i data-lucide="x-circle" class="mr-2"></i> Clear
-                        </button>
-                    </div>
                 </div>
                 
-                <div id="responseContainer" class="hidden opacity-0 transition-all duration-500 ease-in-out transform group">
+                <div id="responseContainer" class="hidden opacity-0">
                     <div class="space-y-6">
-                        <div class="glass-card p-6">
-                            <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="file-text" class="mr-2"></i> Summary</span>
-                                <button class="copy-btn text-slate-300 hover:text-white transition duration-150 relative" data-target="summaryOutput">
-                                    <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
-                                    <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <div id="summarySkeleton" class="hidden space-y-2">
-                                <div class="skeleton skeleton-text w-full"></div>
-                                <div class="skeleton skeleton-text w-full"></div>
-                                <div class="skeleton skeleton-text w-3/4"></div>
+                        <div class="glass-card">
+                            <div class="card-content p-6">
+                                <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
+                                    <span class="flex items-center"><i data-lucide="file-text" class="mr-2"></i> Summary</span>
+                                    <button class="copy-btn text-slate-400 hover:text-white transition duration-150 relative" data-target="summaryOutput">
+                                        <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
+                                        <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
+                                        <span class="copy-feedback">Copied!</span>
+                                    </button>
+                                </h2>
+                                <div id="summarySkeleton" class="hidden space-y-2">
+                                    <div class="skeleton skeleton-text w-full"></div>
+                                    <div class="skeleton skeleton-text w-full"></div>
+                                    <div class="skeleton skeleton-text w-3/4"></div>
+                                </div>
+                                <div id="summaryOutput" class="text-slate-300 leading-relaxed"></div>
                             </div>
-                            <div id="summaryOutput" class="text-slate-100 leading-relaxed"></div>
                         </div>
-
-                        <div class="glass-card p-6">
-                            <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="check-circle-2" class="mr-2"></i> Action Items</span>
-                                <button class="copy-btn text-slate-300 hover:text-white transition duration-150 relative" data-target="actionItemsOutput">
-                                    <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
-                                    <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <div id="actionItemsSkeleton" class="hidden space-y-3">
-                                <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
-                                <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-3/4"></div></div>
+                        <div class="glass-card">
+                           <div class="card-content p-6">
+                                <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
+                                    <span class="flex items-center"><i data-lucide="check-circle-2" class="mr-2"></i> Action Items</span>
+                                    <button class="copy-btn text-slate-400 hover:text-white transition duration-150 relative" data-target="actionItemsOutput">
+                                        <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
+                                        <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
+                                        <span class="copy-feedback">Copied!</span>
+                                    </button>
+                                </h2>
+                                <div id="actionItemsSkeleton" class="hidden space-y-3">
+                                    <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+                                    <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-3/4"></div></div>
+                                </div>
+                                <ul id="actionItemsOutput" class="space-y-2"></ul>
                             </div>
-                            <ul id="actionItemsOutput" class="space-y-2"></ul>
                         </div>
-
-                        <div class="glass-card p-6">
-                            <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="lightbulb" class="mr-2"></i> Suggested Next Steps</span>
-                                <button class="copy-btn text-slate-300 hover:text-white transition duration-150 relative" data-target="nextStepsOutput">
-                                    <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
-                                    <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <div id="nextStepsSkeleton" class="hidden space-y-3">
-                                <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
-                                <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-3/4"></div></div>
+                        <div class="glass-card">
+                           <div class="card-content p-6">
+                                <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
+                                    <span class="flex items-center"><i data-lucide="lightbulb" class="mr-2"></i> Suggested Next Steps</span>
+                                    <button class="copy-btn text-slate-400 hover:text-white transition duration-150 relative" data-target="nextStepsOutput">
+                                        <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
+                                        <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
+                                        <span class="copy-feedback">Copied!</span>
+                                    </button>
+                                </h2>
+                                <div id="nextStepsSkeleton" class="hidden space-y-3">
+                                    <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+                                    <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-3/4"></div></div>
+                                </div>
+                                <ul id="nextStepsOutput" class="space-y-2"></ul>
                             </div>
-                            <ul id="nextStepsOutput" class="space-y-2"></ul>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
-
+    
     <div id="themeSwitcher">
-        <div id="themePanel" class="absolute bottom-16 right-0 w-48 glass-card p-4 space-y-2 hidden transition-all transform scale-95 opacity-0">
-            <h4 class="font-bold text-white">Select a Theme</h4>
-            <button data-theme="theme-midnight" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/20">🌌 Midnight</button>
-            <button data-theme="theme-sunset" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/20">🌇 Sunset</button>
-            <button data-theme="theme-ocean" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/20">🌊 Ocean</button>
+        <div id="themePanel" class="absolute bottom-16 right-0 w-48 glass-card hidden transition-all transform scale-95 opacity-0">
+            <div class="card-content p-4 space-y-2">
+                <h4 class="font-bold text-white">Select a Theme</h4>
+                <button data-theme="theme-midnight" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/10">🌌 Midnight</button>
+                <button data-theme="theme-sunset" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/10">🌇 Sunset</button>
+                <button data-theme="theme-ocean" class="theme-btn w-full text-left p-2 rounded-lg hover:bg-white/10">🌊 Ocean</button>
+            </div>
         </div>
-        <button id="themeToggleBtn" class="p-4 bg-white/20 rounded-full hover:bg-white/30 transition-all transform hover:rotate-45">
+        <button id="themeToggleBtn" class="p-4 bg-slate-700/50 rounded-full hover:bg-slate-600/50 transition-all transform hover:rotate-45">
             <i data-lucide="settings" class="w-6 h-6 text-white"></i>
         </button>
     </div>

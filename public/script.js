@@ -32,7 +32,6 @@ const themeToggleBtn = document.getElementById('themeToggleBtn');
 const themePanel = document.getElementById('themePanel');
 const themeButtons = document.querySelectorAll('.theme-btn');
 
-
 // --- GLOBAL VARIABLES ---
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
@@ -108,9 +107,9 @@ function displayHistory() {
     historyContainer.classList.remove('hidden');
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
-        historyItem.className = 'glass-card bg-slate-50 p-3 rounded-lg border border-slate-200/50 text-slate-800 relative group cursor-pointer hover:bg-white/80 hover:border-purple-300 transition-all duration-200';
+        historyItem.className = 'glass-card bg-slate-800 p-3 rounded-lg border border-slate-700 relative group cursor-pointer hover:border-purple-500 transition-all duration-200';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
-        historyItem.innerHTML = `<p class="text-xs text-slate-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-700 truncate">${displayInput}</p>`;
+        historyItem.innerHTML = `<p class="text-xs text-slate-400 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-200 truncate">${displayInput}</p>`;
         historyItem.dataset.index = index;
         historyList.appendChild(historyItem);
         historyItem.addEventListener('click', () => {
@@ -149,7 +148,7 @@ processBtn.addEventListener('click', async () => {
     summaryOutput.innerHTML = '';
     actionItemsOutput.innerHTML = '';
     nextStepsOutput.innerHTML = '';
-    responseContainer.classList.remove('hidden', 'opacity-0');
+    responseContainer.classList.add('hidden', 'opacity-0');
     document.querySelectorAll('.animate-slide-in').forEach(el => el.classList.remove('animate-slide-in'));
 
     summarySkeleton.classList.remove('hidden');
@@ -212,8 +211,12 @@ async function processStream(response) {
 
     while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-
+        if (done) {
+             if (buffer.length > 0) {
+                 // handle any remaining data in the buffer
+             }
+             break;
+        }
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop();
@@ -227,6 +230,7 @@ async function processStream(response) {
 
                 if (parsedData.type === 'chunk') {
                     if (isFirstChunk) {
+                        responseContainer.classList.remove('hidden', 'opacity-0');
                         summarySkeleton.classList.add('hidden');
                         actionItemsSkeleton.classList.add('hidden');
                         nextStepsSkeleton.classList.add('hidden');
@@ -269,24 +273,24 @@ function displayFinalResponse(finalResponse) {
     if (finalResponse.actionItems && finalResponse.actionItems.length > 0 && finalResponse.actionItems[0] !== "None identified.") {
         finalResponse.actionItems.forEach(item => {
             const li = document.createElement('li');
-            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/10";
-            li.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-white mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-100">${item}</span>`;
+            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/5";
+            li.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-green-400 mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-300">${item}</span>`;
             actionItemsOutput.appendChild(li);
         });
     } else {
-        actionItemsOutput.innerHTML = '<li class="text-slate-300 italic">No action items identified.</li>';
+        actionItemsOutput.innerHTML = '<li class="text-slate-500 italic">No action items identified.</li>';
     }
 
     nextStepsOutput.innerHTML = '';
     if (finalResponse.nextSteps && finalResponse.nextSteps.length > 0 && finalResponse.nextSteps[0] !== "No further suggestions.") {
         finalResponse.nextSteps.forEach(step => {
             const li = document.createElement('li');
-            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/10";
-            li.innerHTML = `<i data-lucide="lightbulb" class="w-5 h-5 text-white mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-100">${step}</span>`;
+            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/5";
+            li.innerHTML = `<i data-lucide="lightbulb" class="w-5 h-5 text-yellow-400 mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-300">${step}</span>`;
             nextStepsOutput.appendChild(li);
         });
     } else {
-        nextStepsOutput.innerHTML = '<li class="text-slate-300 italic">No next steps suggested.</li>';
+        nextStepsOutput.innerHTML = '<li class="text-slate-500 italic">No next steps suggested.</li>';
     }
     lucide.createIcons();
 }
@@ -362,42 +366,12 @@ themeButtons.forEach(button => {
     });
 });
 
-// --- SCROLL ANIMATION LOGIC ---
-function initializeScrollAnimations() {
-    const animatedElements = document.querySelectorAll('.scroll-animate');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('in-view');
-            }
-        });
-    }, { threshold: 0.1 });
-    animatedElements.forEach(el => observer.observe(el));
-}
-
-// --- INTERACTIVE AURORA EFFECT LOGIC ---
-function initializeAuroraEffect() {
-    const cards = document.querySelectorAll('.glass-card');
-    cards.forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            card.style.setProperty('--mouse-x', `${x}px`);
-            card.style.setProperty('--mouse-y', `${y}px`);
-        });
-    });
-}
-
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     displayHistory();
-    initializeAuroraEffect();
     
     const savedTheme = localStorage.getItem('aiAssistantTheme') || 'theme-midnight';
     setTheme(savedTheme);
     
-    initializeScrollAnimations();
-
-    lucide.createIcons(); 
+    lucide.createIcons();
 });
