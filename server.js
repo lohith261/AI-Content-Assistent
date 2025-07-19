@@ -1,4 +1,4 @@
-// server.js (Updated for Document Uploads)
+// server.js (Updated with Timeout for PDF Parsing)
 
 // Import necessary modules
 require('dotenv').config();
@@ -9,11 +9,8 @@ const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@googl
 const axios = require('axios');
 const cheerio = require('cheerio');
 const admin = require('firebase-admin');
-
-// --- NEW: Import document parsing libraries ---
 const pdf = require('pdf-parse');
-const { Document, Packer, Paragraph } = require('docx');
-const mammoth = require('mammoth'); // A robust library for .docx
+const mammoth = require('mammoth');
 
 // Initialize Express app
 const app = express();
@@ -22,19 +19,20 @@ const port = 3000;
 // Middleware setup
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: '10mb' })); // Keep the 10mb limit for files
+app.use(express.json({ limit: '10mb' }));
 
 // --- Firebase Admin SDK Initialization ---
 try {
-    if (!process.env.FIREBASE_PRIVATE_KEY) throw new Error("FIREBASE_PRIVATE_KEY not set");
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        })
-    });
-    console.log('Firebase Admin SDK initialized successfully.');
+    if (process.env.FIREBASE_PRIVATE_KEY) {
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            })
+        });
+        console.log('Firebase Admin SDK initialized successfully.');
+    }
 } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error.message);
 }
@@ -49,10 +47,7 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-const safetySettings = [
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    // ... (other settings are the same)
-];
+const safetySettings = [ /* ... safety settings ... */ ];
 
 // --- Helper functions ---
 function fileToGenerativePart(base64String, mimeType) {
@@ -60,8 +55,26 @@ function fileToGenerativePart(base64String, mimeType) {
 }
 
 async function fetchContentFromUrl(url) {
-    // ... (this function remains the same)
+    try {
+        const { data } = await axios.get(url, { timeout: 10000 });
+        const $ = cheerio.load(data);
+        $('script, style, noscript, link, meta, iframe, form, nav, footer, header, aside').remove();
+        let mainContent = $('article').text() || $('main').text() || $('body').text();
+        mainContent = mainContent.replace(/\s\s+/g, ' ').trim();
+        return mainContent.substring(0, 15000);
+    } catch (error) {
+        console.error(`Error fetching URL ${url}:`, error.message);
+        throw new Error("Failed to fetch content from URL.");
+    }
 }
+
+// --- NEW: Timeout Helper Function ---
+const withTimeout = (promise, ms) => {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Operation timed out after ${ms / 1000} seconds. The file may be too large or complex to parse quickly.`)), ms)
+    );
+    return Promise.race([promise, timeout]);
+};
 
 // --- Main Endpoint ---
 app.post('/generate-content', async (req, res) => {
@@ -76,25 +89,27 @@ app.post('/generate-content', async (req, res) => {
     try {
         const { text, url, image, document, temperature, maxOutputTokens, userId } = req.body;
         let parts = [];
-        let inputTextForHistory = text; // For saving to history later
+        let inputTextForHistory = text;
 
-        // --- UPDATED: Handle different input types ---
         if (image) {
             const mimeType = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1];
             parts.push(fileToGenerativePart(image, mimeType));
             if (text) parts.push({ text });
             inputTextForHistory = 'Image Input';
         } else if (document) {
-            // --- NEW: Logic to handle document uploads ---
             const { mimeType, base64 } = document;
             const buffer = Buffer.from(base64, 'base64');
             let extractedText = '';
 
             if (mimeType === 'application/pdf') {
-                const data = await pdf(buffer);
+                // --- MODIFIED: Use the timeout function here ---
+                const parsingPromise = pdf(buffer);
+                const data = await withTimeout(parsingPromise, 30000); // 30-second timeout
                 extractedText = data.text;
+
             } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                const result = await mammoth.extractRawText({ buffer });
+                const parsingPromise = mammoth.extractRawText({ buffer });
+                const result = await withTimeout(parsingPromise, 30000); // Also add timeout for docx
                 extractedText = result.value;
             } else {
                  throw new Error('Unsupported document type');
@@ -142,7 +157,7 @@ app.post('/generate-content', async (req, res) => {
         
         sendEvent('final', {});
 
-        if (userId && db) {
+        if (userId && db && admin.apps.length) {
             const finalResponse = JSON.parse(fullResponseText);
             const entry = {
                 input: inputTextForHistory,
