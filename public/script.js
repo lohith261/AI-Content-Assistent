@@ -1,12 +1,9 @@
 /**
  * @file script.js
- * @description This file contains all the client-side JavaScript for the AI Content Assistant application.
- * It handles user interactions, API requests via the Fetch API with streaming, and dynamic UI updates,
- * including the interactive Aurora effect and loading skeletons.
+ * @description Client-side JavaScript for the AI Content Assistant.
  */
 
 // --- DOM ELEMENT REFERENCES ---
-// Get references to all the necessary HTML elements to avoid repeated DOM lookups.
 const contentInput = document.getElementById('contentInput');
 const processBtn = document.getElementById('processBtn');
 const clearBtn = document.getElementById('clearBtn');
@@ -28,30 +25,23 @@ const fileUpload = document.getElementById('fileUpload');
 const filePreview = document.getElementById('filePreview');
 const filePreviewName = document.getElementById('filePreviewName');
 const clearFileBtn = document.getElementById('clearFileBtn');
-// NEW: Add references to skeleton loaders
 const summarySkeleton = document.getElementById('summarySkeleton');
 const actionItemsSkeleton = document.getElementById('actionItemsSkeleton');
 const nextStepsSkeleton = document.getElementById('nextStepsSkeleton');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themePanel = document.getElementById('themePanel');
+const themeButtons = document.querySelectorAll('.theme-btn');
 
 
 // --- GLOBAL VARIABLES ---
-let uploadedFile = null; // Stores the currently uploaded file data (name, type, base64 content).
-const HISTORY_KEY = 'aiContentAssistantHistory'; // Key for storing history in the browser's localStorage.
+let uploadedFile = null;
+const HISTORY_KEY = 'aiContentAssistantHistory';
 
 // --- HELPER FUNCTIONS ---
-
-/**
- * Checks if a given string is a valid URL.
- * @param {string} string The string to validate.
- * @returns {boolean} True if the string is a valid URL, false otherwise.
- */
 function isValidUrl(string) {
     try { new URL(string); return true; } catch (e) { return false; }
 }
 
-/**
- * Resets the entire UI to its initial state, clearing all inputs and outputs.
- */
 function clearContent() {
     contentInput.value = '';
     summaryOutput.innerHTML = '';
@@ -71,12 +61,6 @@ function clearContent() {
 }
 
 // --- CORE APPLICATION LOGIC ---
-
-/**
- * Handles the click event for all copy buttons.
- * It reads the content from the target element, copies it to the clipboard,
- * and provides visual feedback to the user by toggling a 'copied' class.
- */
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
         const targetId = button.dataset.target;
@@ -105,24 +89,15 @@ copyButtons.forEach(button => {
     });
 });
 
-/**
- * Saves a completed analysis session to the browser's localStorage.
- * @param {string} input The user's original text or URL input.
- * @param {object} response The final parsed JSON response from the AI.
- * @param {object | null} fileInfo Information about the file that was processed.
- */
 function saveToHistory(input, response, fileInfo = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
     history.unshift(newEntry);
-    history = history.slice(0, 5); // Keep only the last 5 entries
+    history = history.slice(0, 5);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     displayHistory();
 }
 
-/**
- * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
- */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -156,17 +131,11 @@ function displayHistory() {
     });
 }
 
-/**
- * Clears all items from the history in localStorage and updates the UI.
- */
 function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     displayHistory();
 }
 
-/**
- * Main function that is triggered when the "Process Content" button is clicked.
- */
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
@@ -174,7 +143,6 @@ processBtn.addEventListener('click', async () => {
         return;
     }
 
-    // Prepare the UI for a new request.
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
@@ -184,7 +152,6 @@ processBtn.addEventListener('click', async () => {
     responseContainer.classList.remove('hidden', 'opacity-0');
     document.querySelectorAll('.animate-slide-in').forEach(el => el.classList.remove('animate-slide-in'));
 
-    // --- NEW: Show skeleton loaders and hide actual content areas ---
     summarySkeleton.classList.remove('hidden');
     actionItemsSkeleton.classList.remove('hidden');
     nextStepsSkeleton.classList.remove('hidden');
@@ -236,16 +203,12 @@ processBtn.addEventListener('click', async () => {
     }
 });
 
-/**
- * Reads the streaming response from the backend.
- * @param {Response} response The response object from the `fetch` API call.
- */
 async function processStream(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let fullResponseText = "";
-    let isFirstChunk = true; // Flag to handle the first chunk
+    let isFirstChunk = true;
 
     while (true) {
         const { done, value } = await reader.read();
@@ -263,7 +226,6 @@ async function processStream(response) {
                 const parsedData = JSON.parse(jsonData);
 
                 if (parsedData.type === 'chunk') {
-                    // On the first chunk of data, hide the skeletons and show the content areas.
                     if (isFirstChunk) {
                         summarySkeleton.classList.add('hidden');
                         actionItemsSkeleton.classList.add('hidden');
@@ -275,7 +237,7 @@ async function processStream(response) {
                     }
 
                     fullResponseText += parsedData.data.text;
-                    summaryOutput.textContent = fullResponseText; // Live update
+                    summaryOutput.textContent = fullResponseText;
                 } else if (parsedData.type === 'final') {
                     const finalResponse = JSON.parse(fullResponseText);
                     displayFinalResponse(finalResponse);
@@ -289,12 +251,7 @@ async function processStream(response) {
     }
 }
 
-/**
- * Renders the final, complete JSON response from the AI into the UI.
- * @param {object} finalResponse The fully parsed JSON object from the AI.
- */
 function displayFinalResponse(finalResponse) {
-    // Hide skeletons and show content just in case they are still visible
     summarySkeleton.classList.add('hidden');
     actionItemsSkeleton.classList.add('hidden');
     nextStepsSkeleton.classList.add('hidden');
@@ -334,20 +291,12 @@ function displayFinalResponse(finalResponse) {
     lucide.createIcons();
 }
 
-/**
- * Resets the state of the "Process" button after a request is complete or fails.
- */
 function resetButtonState() {
     loadingSpinner.classList.add('hidden');
     buttonText.textContent = 'Process Content';
     processBtn.disabled = false;
 }
 
-/**
- * Shows a preview of the uploaded file.
- * @param {string} name The name of the file.
- * @param {string} type The MIME type of the file.
- */
 function showFilePreview(name, type) {
     if (type.startsWith('image/')) {
         filePreviewName.innerHTML = `<i data-lucide="image" class="mr-2"></i> ${name}`;
@@ -361,7 +310,6 @@ function showFilePreview(name, type) {
     filePreview.classList.remove('hidden');
     lucide.createIcons();
 }
-
 
 // --- EVENT LISTENERS ---
 clearBtn.addEventListener('click', clearContent);
@@ -394,9 +342,40 @@ contentInput.addEventListener('input', () => {
     }
 });
 
-/**
- * Attaches mouse tracking event listeners to all 'glass-card' elements for the Aurora effect.
- */
+// --- THEME SWITCHER LOGIC ---
+function setTheme(themeName) {
+    document.body.className = document.body.className.replace(/theme-\w+/g, '');
+    document.body.classList.add(themeName);
+    localStorage.setItem('aiAssistantTheme', themeName);
+}
+
+themeToggleBtn.addEventListener('click', () => {
+    themePanel.classList.toggle('hidden');
+    themePanel.classList.toggle('opacity-0');
+    themePanel.classList.toggle('scale-95');
+});
+
+themeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const themeName = button.dataset.theme;
+        setTheme(themeName);
+    });
+});
+
+// --- SCROLL ANIMATION LOGIC ---
+function initializeScrollAnimations() {
+    const animatedElements = document.querySelectorAll('.scroll-animate');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('in-view');
+            }
+        });
+    }, { threshold: 0.1 });
+    animatedElements.forEach(el => observer.observe(el));
+}
+
+// --- INTERACTIVE AURORA EFFECT LOGIC ---
 function initializeAuroraEffect() {
     const cards = document.querySelectorAll('.glass-card');
     cards.forEach(card => {
@@ -411,9 +390,14 @@ function initializeAuroraEffect() {
 }
 
 // --- INITIALIZATION ---
-// When the page first loads, initialize history, the aurora effect, and icons.
 document.addEventListener('DOMContentLoaded', () => {
     displayHistory();
     initializeAuroraEffect();
-    lucide.createIcons();
+    
+    const savedTheme = localStorage.getItem('aiAssistantTheme') || 'theme-midnight';
+    setTheme(savedTheme);
+    
+    initializeScrollAnimations();
+
+    lucide.createIcons(); 
 });

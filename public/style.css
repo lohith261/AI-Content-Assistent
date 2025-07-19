@@ -1,30 +1,44 @@
 /**
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
- * Includes styles for the animated background, glassmorphism UI,
- * interactive Aurora effect, icon animations, and loading skeletons.
+ * Includes styles for theming, scroll animations, and all previous UI features.
  */
 
 /* Import the Inter font family */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* Apply the font to the whole page */
 body {
     font-family: 'Inter', sans-serif;
+    /* Add a transition for smooth background changes when switching themes */
+    transition: background 0.5s ease-in-out;
 }
 
-/* --- Animated Gradient Background --- */
+/* --- Animated Gradient Background & THEMES --- */
 @keyframes gradient-animation {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
-.animated-gradient {
+/* Default Theme: "Midnight" */
+.theme-midnight {
     background: linear-gradient(-45deg, #1b2735, #090a0f, #2c3e50, #2c3e50);
     background-size: 400% 400%;
     animation: gradient-animation 25s ease infinite;
 }
+/* New Theme: "Sunset" */
+.theme-sunset {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+}
+/* New Theme: "Ocean" */
+.theme-ocean {
+    background: linear-gradient(-45deg, #00c6ff, #0072ff, #0052D4, #4364F7);
+    background-size: 400% 400%;
+    animation: gradient-animation 20s ease infinite;
+}
+
 
 /* --- Glassmorphism Effect with Interactive Aurora --- */
 .glass-card {
@@ -59,6 +73,31 @@ body {
 
 .glass-card:hover::before {
     opacity: 1;
+}
+
+/* --- NEW: Scroll Animation Styles --- */
+/* The initial state of elements that will be animated on scroll */
+.scroll-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+/* The final state when the element is visible */
+.scroll-animate.in-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+
+/* --- NEW: Theme Switcher Styles --- */
+#themeSwitcher {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 50;
+}
+#themePanel {
+    transform-origin: bottom right;
 }
 
 /* --- Animation for response cards appearing --- */
@@ -110,7 +149,7 @@ body {
     opacity: 1;
 }
 
-/* --- NEW: Loading Skeleton Styles --- */
+/* --- Loading Skeleton Styles --- */
 .skeleton {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 0.25rem;
@@ -122,7 +161,6 @@ body {
     margin-bottom: 0.5em;
 }
 
-/* Shimmer animation for the skeleton */
 .skeleton::after {
     content: '';
     position: absolute;
@@ -145,7 +183,6 @@ body {
         transform: translateX(100%);
     }
 }
-
 
 #summaryOutput {
     white-space: pre-wrap;
