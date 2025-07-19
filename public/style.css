@@ -2,7 +2,7 @@
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
  * Includes styles for the animated background, glassmorphism UI,
- * and new interactive animations.
+ * and interactive animations.
  */
 
 /* Import the Inter font family */
@@ -30,24 +30,20 @@ body {
 .glass-card {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* For Safari support */
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    /* --- NEW: Add transition for hover effects --- */
     transition: all 0.3s ease-in-out;
 }
 
-/* --- NEW: Hover effect for all glass cards --- */
 .glass-card:hover {
-    transform: translateY(-5px); /* Lift the card up slightly */
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Increase the shadow */
-    border-color: rgba(255, 255, 255, 0.5); /* Make the border brighter */
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
-
-/* --- NEW: Animation for response cards appearing --- */
-/* This will be applied by JavaScript when the response starts streaming */
+/* --- Animation for response cards appearing --- */
 @keyframes slide-in-fade-in {
     from {
         opacity: 0;
@@ -60,19 +56,30 @@ body {
 }
 
 .animate-slide-in {
-    /* Apply the animation */
     animation: slide-in-fade-in 0.5s ease-out forwards;
 }
 
-
-/* Style for the "Copied!" feedback tooltip */
+/* --- Style for the "Copied!" feedback tooltip --- */
 .copy-btn .copy-feedback {
-    /* ... (this section remains the same) ... */
+    position: absolute;
+    top: -28px;
+    right: 50%;
+    transform: translateX(50%);
+    background-color: #10B981; /* Tailwind's green-500 */
+    color: white;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    /* This rule hides the tooltip by default */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
-/* When the button has the 'copied' class, make the feedback visible */
+/* This rule makes the tooltip visible ONLY when the button has the 'copied' class */
 .copy-btn.copied .copy-feedback {
-    /* ... (this section remains the same) ... */
+    opacity: 1;
 }
 
 /* Ensure pre-wrap for text output to respect newlines from AI */
