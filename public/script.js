@@ -1,6 +1,11 @@
-// script.js (Updated for Document Uploads)
+/**
+ * @file script.js
+ * @description This file contains all the client-side JavaScript for the AI Content Assistant application.
+ * It handles user interactions, API requests via the Fetch API with streaming, and dynamic UI updates.
+ */
 
-// --- Get references to DOM elements ---
+// --- DOM ELEMENT REFERENCES ---
+// Get references to all the necessary HTML elements to avoid repeated DOM lookups.
 const contentInput = document.getElementById('contentInput');
 const processBtn = document.getElementById('processBtn');
 const clearBtn = document.getElementById('clearBtn');
@@ -22,13 +27,25 @@ const fileUpload = document.getElementById('fileUpload');
 const filePreview = document.getElementById('filePreview');
 const filePreviewName = document.getElementById('filePreviewName');
 const clearFileBtn = document.getElementById('clearFileBtn');
-let uploadedFile = null;
 
-// --- Helper Functions ---
+// --- GLOBAL VARIABLES ---
+let uploadedFile = null; // Stores the currently uploaded file data (name, type, base64 content).
+const HISTORY_KEY = 'aiContentAssistantHistory'; // Key for storing history in the browser's localStorage.
+
+// --- HELPER FUNCTIONS ---
+
+/**
+ * Checks if a given string is a valid URL.
+ * @param {string} string The string to validate.
+ * @returns {boolean} True if the string is a valid URL, false otherwise.
+ */
 function isValidUrl(string) {
     try { new URL(string); return true; } catch (e) { return false; }
 }
 
+/**
+ * Resets the entire UI to its initial state, clearing all inputs and outputs.
+ */
 function clearContent() {
     contentInput.value = '';
     summaryOutput.innerHTML = '';
@@ -47,7 +64,13 @@ function clearContent() {
     lucide.createIcons();
 }
 
-// --- Copy to Clipboard Logic ---
+// --- CORE APPLICATION LOGIC ---
+
+/**
+ * Handles the click event for all copy buttons.
+ * It reads the content from the target element, copies it to the clipboard,
+ * and provides visual feedback to the user.
+ */
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
         const targetId = button.dataset.target;
@@ -76,8 +99,12 @@ copyButtons.forEach(button => {
     });
 });
 
-// --- Local Storage History ---
-const HISTORY_KEY = 'aiContentAssistantHistory';
+/**
+ * Saves a completed analysis session to the browser's localStorage.
+ * @param {string} input The user's original text or URL input.
+ * @param {object} response The final parsed JSON response from the AI.
+ * @param {object | null} fileInfo Information about the file that was processed.
+ */
 function saveToHistory(input, response, fileInfo = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
@@ -87,6 +114,9 @@ function saveToHistory(input, response, fileInfo = null) {
     displayHistory();
 }
 
+/**
+ * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
+ */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -120,13 +150,19 @@ function displayHistory() {
     });
 }
 
+/**
+ * Clears all items from the history in localStorage and updates the UI.
+ */
 function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     displayHistory();
 }
-clearHistoryBtn.addEventListener('click', clearHistory);
 
-// --- Main Process Button Logic ---
+/**
+ * Main function that is triggered when the "Process Content" button is clicked.
+ * It gathers all user inputs, constructs a payload, and sends a POST request
+ * to the backend to start the AI analysis stream.
+ */
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
@@ -134,6 +170,7 @@ processBtn.addEventListener('click', async () => {
         return;
     }
 
+    // Prepare the UI for a new request.
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
@@ -151,16 +188,17 @@ processBtn.addEventListener('click', async () => {
             maxOutputTokens: parseInt(maxTokensInput.value),
         };
 
+        // Construct the payload based on the type of input provided.
         if (uploadedFile) {
             historyInput = null; // Prioritize file over text for history
             if (uploadedFile.type.startsWith('image/')) {
                 payload.image = uploadedFile.base64;
-                if (inputContent) payload.text = inputContent; // Allow text with image
+                if (inputContent) payload.text = inputContent;
             } else {
                 payload.document = {
                     name: uploadedFile.name,
                     mimeType: uploadedFile.type,
-                    base64: uploadedFile.base64.split(',')[1]
+                    base64: uploadedFile.base64.split(',')[1] // Send raw base64
                 };
             }
         } else if (isValidUrl(inputContent)) {
@@ -169,6 +207,7 @@ processBtn.addEventListener('click', async () => {
             payload.text = inputContent;
         }
 
+        // Use the Fetch API to send a POST request to the backend.
         const response = await fetch(`https://ai-content-assistant-backend.onrender.com/generate-content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -177,39 +216,8 @@ processBtn.addEventListener('click', async () => {
 
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (line.startsWith('data:')) {
-                    const jsonData = line.substring(5).trim();
-                    if (!jsonData) continue;
-                    
-                    const parsedData = JSON.parse(jsonData);
-
-                    if (parsedData.type === 'chunk') {
-                        fullResponseText += parsedData.data.text;
-                        summaryOutput.textContent = fullResponseText;
-                    } else if (parsedData.type === 'final') {
-                        const finalResponse = JSON.parse(fullResponseText);
-                        displayFinalResponse(finalResponse);
-                        saveToHistory(historyInput, finalResponse, uploadedFile);
-                        resetButtonState();
-                    } else if (parsedData.type === 'error') {
-                        throw new Error(parsedData.data.message);
-                    }
-                }
-            }
-        }
+        // Manually process the streaming response from the server.
+        await processStream(response);
 
     } catch (error) {
         console.error('Request failed:', error);
@@ -218,6 +226,52 @@ processBtn.addEventListener('click', async () => {
     }
 });
 
+/**
+ * Reads the streaming response from the backend's Server-Sent Events (SSE) feed.
+ * It decodes the stream, processes messages chunk by chunk, and updates the UI in real-time.
+ * @param {Response} response The response object from the `fetch` API call.
+ */
+async function processStream(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponseText = ""; // Reset for each stream
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop(); // Keep any partial message for the next chunk
+
+        for (const line of lines) {
+            if (line.startsWith('data:')) {
+                const jsonData = line.substring(5).trim();
+                if (!jsonData) continue;
+                
+                const parsedData = JSON.parse(jsonData);
+
+                if (parsedData.type === 'chunk') {
+                    fullResponseText += parsedData.data.text;
+                    summaryOutput.textContent = fullResponseText; // Live update
+                } else if (parsedData.type === 'final') {
+                    const finalResponse = JSON.parse(fullResponseText);
+                    displayFinalResponse(finalResponse);
+                    saveToHistory(contentInput.value.trim() || null, finalResponse, uploadedFile);
+                    resetButtonState();
+                } else if (parsedData.type === 'error') {
+                    throw new Error(parsedData.data.message);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders the final, complete JSON response from the AI into the appropriate UI sections.
+ * @param {object} finalResponse The fully parsed JSON object from the AI.
+ */
 function displayFinalResponse(finalResponse) {
     summaryOutput.textContent = finalResponse.summary || 'No summary generated.';
     
@@ -247,17 +301,26 @@ function displayFinalResponse(finalResponse) {
     lucide.createIcons();
 }
 
+/**
+ * Resets the state of the "Process" button after a request is complete or fails.
+ */
 function resetButtonState() {
     loadingSpinner.classList.add('hidden');
     buttonText.textContent = 'Process Content';
     processBtn.disabled = false;
 }
 
-// --- Event Listeners ---
+// --- EVENT LISTENERS ---
 clearBtn.addEventListener('click', clearContent);
+clearHistoryBtn.addEventListener('click', clearHistory);
 temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
 maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
 
+/**
+ * Shows a preview of the uploaded file.
+ * @param {string} name The name of the file.
+ * @param {string} type The MIME type of the file.
+ */
 function showFilePreview(name, type) {
     if (type.startsWith('image/')) {
         filePreviewName.innerHTML = `<i data-lucide="image" class="mr-2"></i> ${name}`;
@@ -272,6 +335,10 @@ function showFilePreview(name, type) {
     lucide.createIcons();
 }
 
+/**
+ * Handles the 'change' event for the file input element.
+ * Reads the selected file, converts it to a base64 string, and displays a preview.
+ */
 fileUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -285,16 +352,20 @@ fileUpload.addEventListener('change', (event) => {
     }
 });
 
+// Clears the selected file.
 clearFileBtn.addEventListener('click', () => {
     fileUpload.value = '';
     uploadedFile = null;
     filePreview.classList.add('hidden');
 });
 
+// Automatically clears the file input if the user starts typing text.
 contentInput.addEventListener('input', () => {
     if (contentInput.value.trim() !== '') {
         clearFileBtn.click();
     }
 });
 
+// --- INITIALIZATION ---
+// When the page first loads, call displayHistory() to show any saved sessions.
 document.addEventListener('DOMContentLoaded', displayHistory);

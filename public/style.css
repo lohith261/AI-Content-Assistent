@@ -1,26 +1,61 @@
 /* style.css */
 
+/* Import the Inter font family */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* Apply the font to the whole page */
 body {
     font-family: 'Inter', sans-serif;
+}
+
+/* --- NEW: Animated Gradient Background --- */
+/* This creates the keyframes for our background animation. */
+/* It smoothly transitions the background position over 15 seconds. */
+@keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* This class applies the animated gradient to an element. */
+/* We will add this class to our <body> tag. */
+.animated-gradient {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+}
+
+/* --- NEW: Glassmorphism Effect --- */
+/* This is our main class for the "frosted glass" look. */
+/* We will apply this to all the cards in our UI. */
+.glass-card {
+    /* The background is semi-transparent white. */
+    background: rgba(255, 255, 255, 0.2);
+    /* The backdrop-filter is what creates the blur effect on the content behind the card. */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* For Safari support */
+    /* A subtle border helps define the card's edges. */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    /* We keep the rounded corners and shadow from before. */
+    border-radius: 1rem; /* rounded-xl */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* Style for the "Copied!" feedback tooltip */
 .copy-btn .copy-feedback {
     position: absolute;
-    top: -28px; /* Position it above the button */
+    top: -28px;
     right: 50%;
-    transform: translateX(50%); /* Center it horizontally */
+    transform: translateX(50%);
     background-color: #10B981; /* Tailwind's green-500 */
     color: white;
-    font-size: 0.75rem; /* text-xs */
+    font-size: 0.75rem;
     padding: 2px 8px;
-    border-radius: 9999px; /* rounded-full */
+    border-radius: 9999px;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    pointer-events: none; /* So it doesn't block clicks */
-    white-space: nowrap; /* Prevent text wrapping */
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 /* When the button has the 'copied' class, make the feedback visible */
