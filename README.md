@@ -102,8 +102,7 @@ You will see a message that the server is listening on port 3000. Now, open your
 ### 🚀 Future Enhancements
 
   * **User Authentication:** Implement a full login system to associate processing history with specific users in Firestore.
-  * **Streaming Responses:** Display the AI's response word-by-word as it's generated for a more dynamic and responsive user experience.
   * **Direct-to-Task-Manager:** Add buttons to export extracted action items to services like Trello, Asana, or Google Tasks.
   * **Advanced Scraping:** For websites that rely heavily on JavaScript, integrate a headless browser like Puppeteer for more reliable content extraction.
-  * **Custom Prompts:** Allow users to create and save their own prompt templates for specialized tasks.
-
+  
+  

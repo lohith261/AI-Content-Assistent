@@ -1,4 +1,9 @@
-/* style.css */
+/**
+ * @file style.css
+ * @description Custom stylesheet for the AI Content Assistant.
+ * Includes styles for the animated background, glassmorphism UI,
+ * and new interactive animations.
+ */
 
 /* Import the Inter font family */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -8,59 +13,66 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
-/* --- NEW: Animated Gradient Background --- */
-/* This creates the keyframes for our background animation. */
-/* It smoothly transitions the background position over 15 seconds. */
+/* --- Animated Gradient Background --- */
 @keyframes gradient-animation {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
-/* This class applies the animated gradient to an element. */
-/* We will add this class to our <body> tag. */
 .animated-gradient {
     background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;
 }
 
-/* --- NEW: Glassmorphism Effect --- */
-/* This is our main class for the "frosted glass" look. */
-/* We will apply this to all the cards in our UI. */
+/* --- Glassmorphism Effect --- */
 .glass-card {
-    /* The background is semi-transparent white. */
     background: rgba(255, 255, 255, 0.2);
-    /* The backdrop-filter is what creates the blur effect on the content behind the card. */
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); /* For Safari support */
-    /* A subtle border helps define the card's edges. */
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    /* We keep the rounded corners and shadow from before. */
-    border-radius: 1rem; /* rounded-xl */
+    border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    /* --- NEW: Add transition for hover effects --- */
+    transition: all 0.3s ease-in-out;
 }
+
+/* --- NEW: Hover effect for all glass cards --- */
+.glass-card:hover {
+    transform: translateY(-5px); /* Lift the card up slightly */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Increase the shadow */
+    border-color: rgba(255, 255, 255, 0.5); /* Make the border brighter */
+}
+
+
+/* --- NEW: Animation for response cards appearing --- */
+/* This will be applied by JavaScript when the response starts streaming */
+@keyframes slide-in-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-in {
+    /* Apply the animation */
+    animation: slide-in-fade-in 0.5s ease-out forwards;
+}
+
 
 /* Style for the "Copied!" feedback tooltip */
 .copy-btn .copy-feedback {
-    position: absolute;
-    top: -28px;
-    right: 50%;
-    transform: translateX(50%);
-    background-color: #10B981; /* Tailwind's green-500 */
-    color: white;
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-    pointer-events: none;
-    white-space: nowrap;
+    /* ... (this section remains the same) ... */
 }
 
 /* When the button has the 'copied' class, make the feedback visible */
 .copy-btn.copied .copy-feedback {
-    opacity: 1;
+    /* ... (this section remains the same) ... */
 }
 
 /* Ensure pre-wrap for text output to respect newlines from AI */

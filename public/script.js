@@ -5,7 +5,6 @@
  */
 
 // --- DOM ELEMENT REFERENCES ---
-// Get references to all the necessary HTML elements to avoid repeated DOM lookups.
 const contentInput = document.getElementById('contentInput');
 const processBtn = document.getElementById('processBtn');
 const clearBtn = document.getElementById('clearBtn');
@@ -29,23 +28,14 @@ const filePreviewName = document.getElementById('filePreviewName');
 const clearFileBtn = document.getElementById('clearFileBtn');
 
 // --- GLOBAL VARIABLES ---
-let uploadedFile = null; // Stores the currently uploaded file data (name, type, base64 content).
-const HISTORY_KEY = 'aiContentAssistantHistory'; // Key for storing history in the browser's localStorage.
+let uploadedFile = null;
+const HISTORY_KEY = 'aiContentAssistantHistory';
 
 // --- HELPER FUNCTIONS ---
-
-/**
- * Checks if a given string is a valid URL.
- * @param {string} string The string to validate.
- * @returns {boolean} True if the string is a valid URL, false otherwise.
- */
 function isValidUrl(string) {
     try { new URL(string); return true; } catch (e) { return false; }
 }
 
-/**
- * Resets the entire UI to its initial state, clearing all inputs and outputs.
- */
 function clearContent() {
     contentInput.value = '';
     summaryOutput.innerHTML = '';
@@ -65,12 +55,6 @@ function clearContent() {
 }
 
 // --- CORE APPLICATION LOGIC ---
-
-/**
- * Handles the click event for all copy buttons.
- * It reads the content from the target element, copies it to the clipboard,
- * and provides visual feedback to the user.
- */
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
         const targetId = button.dataset.target;
@@ -99,12 +83,6 @@ copyButtons.forEach(button => {
     });
 });
 
-/**
- * Saves a completed analysis session to the browser's localStorage.
- * @param {string} input The user's original text or URL input.
- * @param {object} response The final parsed JSON response from the AI.
- * @param {object | null} fileInfo Information about the file that was processed.
- */
 function saveToHistory(input, response, fileInfo = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
@@ -114,9 +92,6 @@ function saveToHistory(input, response, fileInfo = null) {
     displayHistory();
 }
 
-/**
- * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
- */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -127,7 +102,7 @@ function displayHistory() {
     historyContainer.classList.remove('hidden');
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
-        historyItem.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 relative group cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-all duration-200';
+        historyItem.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200/50 text-slate-800 relative group cursor-pointer hover:bg-white/80 hover:border-purple-300 transition-all duration-200';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
         historyItem.innerHTML = `<p class="text-xs text-slate-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-700 truncate">${displayInput}</p>`;
         historyItem.dataset.index = index;
@@ -150,19 +125,11 @@ function displayHistory() {
     });
 }
 
-/**
- * Clears all items from the history in localStorage and updates the UI.
- */
 function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     displayHistory();
 }
 
-/**
- * Main function that is triggered when the "Process Content" button is clicked.
- * It gathers all user inputs, constructs a payload, and sends a POST request
- * to the backend to start the AI analysis stream.
- */
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
@@ -170,7 +137,6 @@ processBtn.addEventListener('click', async () => {
         return;
     }
 
-    // Prepare the UI for a new request.
     loadingSpinner.classList.remove('hidden');
     buttonText.textContent = 'Processing...';
     processBtn.disabled = true;
@@ -178,6 +144,10 @@ processBtn.addEventListener('click', async () => {
     actionItemsOutput.innerHTML = '';
     nextStepsOutput.innerHTML = '';
     responseContainer.classList.remove('hidden', 'opacity-0');
+
+    // Remove animation classes from previous runs
+    document.querySelectorAll('.animate-slide-in').forEach(el => el.classList.remove('animate-slide-in'));
+
 
     let fullResponseText = "";
     let historyInput = inputContent;
@@ -188,9 +158,8 @@ processBtn.addEventListener('click', async () => {
             maxOutputTokens: parseInt(maxTokensInput.value),
         };
 
-        // Construct the payload based on the type of input provided.
         if (uploadedFile) {
-            historyInput = null; // Prioritize file over text for history
+            historyInput = null;
             if (uploadedFile.type.startsWith('image/')) {
                 payload.image = uploadedFile.base64;
                 if (inputContent) payload.text = inputContent;
@@ -198,7 +167,7 @@ processBtn.addEventListener('click', async () => {
                 payload.document = {
                     name: uploadedFile.name,
                     mimeType: uploadedFile.type,
-                    base64: uploadedFile.base64.split(',')[1] // Send raw base64
+                    base64: uploadedFile.base64.split(',')[1]
                 };
             }
         } else if (isValidUrl(inputContent)) {
@@ -207,7 +176,6 @@ processBtn.addEventListener('click', async () => {
             payload.text = inputContent;
         }
 
-        // Use the Fetch API to send a POST request to the backend.
         const response = await fetch(`https://ai-content-assistant-backend.onrender.com/generate-content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -216,7 +184,6 @@ processBtn.addEventListener('click', async () => {
 
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-        // Manually process the streaming response from the server.
         await processStream(response);
 
     } catch (error) {
@@ -226,16 +193,11 @@ processBtn.addEventListener('click', async () => {
     }
 });
 
-/**
- * Reads the streaming response from the backend's Server-Sent Events (SSE) feed.
- * It decodes the stream, processes messages chunk by chunk, and updates the UI in real-time.
- * @param {Response} response The response object from the `fetch` API call.
- */
 async function processStream(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    let fullResponseText = ""; // Reset for each stream
+    let fullResponseText = "";
 
     while (true) {
         const { done, value } = await reader.read();
@@ -243,7 +205,7 @@ async function processStream(response) {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
-        buffer = lines.pop(); // Keep any partial message for the next chunk
+        buffer = lines.pop();
 
         for (const line of lines) {
             if (line.startsWith('data:')) {
@@ -254,7 +216,7 @@ async function processStream(response) {
 
                 if (parsedData.type === 'chunk') {
                     fullResponseText += parsedData.data.text;
-                    summaryOutput.textContent = fullResponseText; // Live update
+                    summaryOutput.textContent = fullResponseText;
                 } else if (parsedData.type === 'final') {
                     const finalResponse = JSON.parse(fullResponseText);
                     displayFinalResponse(finalResponse);
@@ -268,42 +230,40 @@ async function processStream(response) {
     }
 }
 
-/**
- * Renders the final, complete JSON response from the AI into the appropriate UI sections.
- * @param {object} finalResponse The fully parsed JSON object from the AI.
- */
 function displayFinalResponse(finalResponse) {
+    // Add animation class to each card
+    summaryOutput.closest('.glass-card').classList.add('animate-slide-in');
+    actionItemsOutput.closest('.glass-card').classList.add('animate-slide-in');
+    nextStepsOutput.closest('.glass-card').classList.add('animate-slide-in');
+
     summaryOutput.textContent = finalResponse.summary || 'No summary generated.';
     
     actionItemsOutput.innerHTML = '';
     if (finalResponse.actionItems && finalResponse.actionItems.length > 0 && finalResponse.actionItems[0] !== "None identified.") {
         finalResponse.actionItems.forEach(item => {
             const li = document.createElement('li');
-            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-green-50";
-            li.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-700">${item}</span>`;
+            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/10";
+            li.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-white mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-100">${item}</span>`;
             actionItemsOutput.appendChild(li);
         });
     } else {
-        actionItemsOutput.innerHTML = '<li class="text-slate-500 italic">No action items identified.</li>';
+        actionItemsOutput.innerHTML = '<li class="text-slate-300 italic">No action items identified.</li>';
     }
 
     nextStepsOutput.innerHTML = '';
     if (finalResponse.nextSteps && finalResponse.nextSteps.length > 0 && finalResponse.nextSteps[0] !== "No further suggestions.") {
         finalResponse.nextSteps.forEach(step => {
             const li = document.createElement('li');
-            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-yellow-50";
-            li.innerHTML = `<i data-lucide="lightbulb" class="w-5 h-5 text-yellow-500 mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-700">${step}</span>`;
+            li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/10";
+            li.innerHTML = `<i data-lucide="lightbulb" class="w-5 h-5 text-white mr-3 mt-1 flex-shrink-0"></i><span class="text-slate-100">${step}</span>`;
             nextStepsOutput.appendChild(li);
         });
     } else {
-        nextStepsOutput.innerHTML = '<li class="text-slate-500 italic">No next steps suggested.</li>';
+        nextStepsOutput.innerHTML = '<li class="text-slate-300 italic">No next steps suggested.</li>';
     }
     lucide.createIcons();
 }
 
-/**
- * Resets the state of the "Process" button after a request is complete or fails.
- */
 function resetButtonState() {
     loadingSpinner.classList.add('hidden');
     buttonText.textContent = 'Process Content';
@@ -316,18 +276,13 @@ clearHistoryBtn.addEventListener('click', clearHistory);
 temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
 maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
 
-/**
- * Shows a preview of the uploaded file.
- * @param {string} name The name of the file.
- * @param {string} type The MIME type of the file.
- */
 function showFilePreview(name, type) {
     if (type.startsWith('image/')) {
         filePreviewName.innerHTML = `<i data-lucide="image" class="mr-2"></i> ${name}`;
     } else if (type === 'application/pdf') {
-        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-red-500"></i> ${name}`;
+        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-red-400"></i> ${name}`;
     } else if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-blue-500"></i> ${name}`;
+        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-blue-400"></i> ${name}`;
     } else {
         filePreviewName.innerHTML = `<i data-lucide="file" class="mr-2"></i> ${name}`;
     }
@@ -335,10 +290,6 @@ function showFilePreview(name, type) {
     lucide.createIcons();
 }
 
-/**
- * Handles the 'change' event for the file input element.
- * Reads the selected file, converts it to a base64 string, and displays a preview.
- */
 fileUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -352,14 +303,12 @@ fileUpload.addEventListener('change', (event) => {
     }
 });
 
-// Clears the selected file.
 clearFileBtn.addEventListener('click', () => {
     fileUpload.value = '';
     uploadedFile = null;
     filePreview.classList.add('hidden');
 });
 
-// Automatically clears the file input if the user starts typing text.
 contentInput.addEventListener('input', () => {
     if (contentInput.value.trim() !== '') {
         clearFileBtn.click();
@@ -367,5 +316,4 @@ contentInput.addEventListener('input', () => {
 });
 
 // --- INITIALIZATION ---
-// When the page first loads, call displayHistory() to show any saved sessions.
 document.addEventListener('DOMContentLoaded', displayHistory);
