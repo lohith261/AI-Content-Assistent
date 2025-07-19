@@ -315,5 +315,34 @@ contentInput.addEventListener('input', () => {
     }
 });
 
+// --- NEW: Interactive Aurora Effect Logic ---
+
+/**
+ * Attaches mouse tracking event listeners to all elements with the 'glass-card' class.
+ * This function updates CSS custom properties (--mouse-x, --mouse-y) on the element,
+ * which the CSS uses to position the radial gradient (the aurora glow).
+ */
+function initializeAuroraEffect() {
+    const cards = document.querySelectorAll('.glass-card');
+    cards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            // Get the position of the card relative to the viewport
+            const rect = card.getBoundingClientRect();
+            // Calculate the mouse position relative to the card's top-left corner
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Set the CSS custom properties on the card element
+            card.style.setProperty('--mouse-x', `${x}px`);
+            card.style.setProperty('--mouse-y', `${y}px`);
+        });
+    });
+}
+
+
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', displayHistory);
+// When the page first loads, initialize history and the new aurora effect.
+document.addEventListener('DOMContentLoaded', () => {
+    displayHistory();
+    initializeAuroraEffect();
+});

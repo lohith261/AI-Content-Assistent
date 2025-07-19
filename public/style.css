@@ -2,7 +2,7 @@
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
  * Includes styles for the animated background, glassmorphism UI,
- * and interactive animations.
+ * and the new interactive Aurora effect.
  */
 
 /* Import the Inter font family */
@@ -21,68 +21,80 @@ body {
 }
 
 .animated-gradient {
-    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background: linear-gradient(-45deg, #1b2735, #090a0f, #2c3e50, #2c3e50);
     background-size: 400% 400%;
-    animation: gradient-animation 15s ease infinite;
+    animation: gradient-animation 25s ease infinite;
 }
 
-/* --- Glassmorphism Effect --- */
+/* --- Glassmorphism Effect with Interactive Aurora --- */
 .glass-card {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); /* For Safari support */
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease-in-out;
+    position: relative; /* Required for the ::before pseudo-element */
+    overflow: hidden;   /* Keeps the glow contained within the card */
 }
 
-.glass-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+/* --- NEW: The Aurora Glow Effect --- */
+.glass-card::before {
+    content: '';
+    position: absolute;
+    /* Position the gradient based on CSS variables controlled by JavaScript */
+    left: var(--mouse-x);
+    top: var(--mouse-y);
+    width: 200px; /* Size of the glow */
+    height: 200px;
+    background-image: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0) 80%
+    );
+    /* Center the gradient on the cursor */
+    transform: translate(-50%, -50%);
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none; /* Allows clicks to pass through the glow */
 }
 
-/* --- Animation for response cards appearing --- */
+/* When hovering over the card, make the glow visible */
+.glass-card:hover::before {
+    opacity: 1;
+}
+
+/* --- Other styles remain the same --- */
 @keyframes slide-in-fade-in {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-in {
     animation: slide-in-fade-in 0.5s ease-out forwards;
 }
 
-/* --- Style for the "Copied!" feedback tooltip --- */
 .copy-btn .copy-feedback {
     position: absolute;
     top: -28px;
     right: 50%;
     transform: translateX(50%);
-    background-color: #10B981; /* Tailwind's green-500 */
+    background-color: #10B981;
     color: white;
     font-size: 0.75rem;
     padding: 2px 8px;
     border-radius: 9999px;
-    /* This rule hides the tooltip by default */
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
     pointer-events: none;
     white-space: nowrap;
 }
 
-/* This rule makes the tooltip visible ONLY when the button has the 'copied' class */
 .copy-btn.copied .copy-feedback {
     opacity: 1;
 }
 
-/* Ensure pre-wrap for text output to respect newlines from AI */
 #summaryOutput {
     white-space: pre-wrap;
     word-wrap: break-word;
