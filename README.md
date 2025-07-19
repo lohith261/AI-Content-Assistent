@@ -5,7 +5,7 @@
 
 An intelligent web application powered by the Google Gemini 1.5 Flash model. This tool serves as a powerful productivity assistant, capable of analyzing content from multiple sources—including text, website URLs, images, and local documents—to provide you with concise summaries, actionable tasks, and insightful next steps.
 
-The backend is built with Node.js/Express and is ready for deployment on services like Render, while the frontend is a clean, responsive vanilla JS application with a modern, futuristic UI.
+The backend is built with Node.js/Express and features a hybrid web scraper for maximum compatibility. The frontend is a clean, responsive vanilla JS application with a modern, interactive, and customizable UI.
 
 ---
 
@@ -15,21 +15,22 @@ The backend is built with Node.js/Express and is ready for deployment on service
 
 ### ✨ Key Features
 
+* **🎨 Interactive & Themed UI:** A modern, futuristic interface featuring an animated "Tracer Border" effect on all cards. Includes a theme switcher that allows users to choose between multiple color schemes (Midnight, Sunset, Ocean).
 * **✨ Multi-Modal Input:** Process content from pasted text, live website URLs, uploaded images, and now **`.pdf`** and **`.docx`** documents.
-* **🎨 Futuristic UI:** A modern interface featuring a dynamic, animated gradient background and a "glassmorphism" (frosted glass) effect on all UI elements.
+* **🤖 Advanced Hybrid Web Scraper:** Utilizes a smart scraping strategy. It first tries a fast, lightweight scraper for static sites, and automatically falls back to a powerful headless browser (**Puppeteer**) to handle complex, JavaScript-heavy websites.
+* **🚀 Dynamic Animations:** Features scroll-based animations for a smooth loading experience, animated icons for clear user feedback, and enhanced loading skeletons to improve perceived performance.
 * **📝 Intelligent Summarization:** Distills long articles, notes, or documents into concise, easy-to-digest summaries.
 * **✅ Action Item Extraction:** Automatically identifies and lists clear, actionable tasks and follow-ups from the provided content.
-* **💡 Suggested Next Steps:** Provides intelligent recommendations for further reading, research topics, or related actions.
-* **🎛️ Customizable AI Parameters:** Fine-tune the AI's creativity and response length by adjusting the **Temperature** and **Max Output Tokens**.
+* **💡 Suggested Next Steps:** Provides intelligent recommendations for further reading or related actions.
 * **🔐 Secure Backend:** Uses a Node.js backend to handle all API calls securely, ensuring your Gemini API key is never exposed on the frontend.
-* **📜 Processing History:** Your last five analyses are automatically saved to your browser's local storage for quick access.
+* **📜 Processing History:** The last five analyses are automatically saved to your browser's local storage for quick access.
 
 ### 🛠️ Tech Stack
 
 | Area       | Technology                                                                                                                              |
 | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
 | **Frontend** | `HTML5`, `Tailwind CSS` (via CDN), `Vanilla JavaScript`, `Lucide Icons`                                                                   |
-| **Backend** | `Node.js`, `Express.js`, `@google/generative-ai`, `axios`, `cheerio`, `cors`, `dotenv`, `firebase-admin`, **`pdf-parse`**, **`mammoth`** |
+| **Backend** | `Node.js`, `Express.js`, `@google/generative-ai`, `axios`, `cheerio`, **`puppeteer`**, `cors`, `dotenv`, `firebase-admin`, **`pdf-parse`**, **`mammoth`** |
 | **Platform** | Deployed on **Vercel** (Frontend) and **Render** (Backend)                                                                              |
 
 ### 📂 Project Structure
@@ -103,6 +104,6 @@ You will see a message that the server is listening on port 3000. Now, open your
 
   * **User Authentication:** Implement a full login system to associate processing history with specific users in Firestore.
   * **Direct-to-Task-Manager:** Add buttons to export extracted action items to services like Trello, Asana, or Google Tasks.
-  * **Advanced Scraping:** For websites that rely heavily on JavaScript, integrate a headless browser like Puppeteer for more reliable content extraction.
+  * **Cloud-Synced History:** Once users can log in, save their entire processing history to their account in Firestore, making it accessible from any device.
   
   
