@@ -10,7 +10,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = a('path');
+const path = require('path');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 const axios = require('axios');
 const cheerio = require('cheerio');
