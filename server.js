@@ -1,13 +1,11 @@
 /**
  * @file server.js
  * @description The backend server for the AI Content Assistant.
- * This server handles API requests from the frontend, communicates with the Google Gemini API,
- * and processes various input types like text, URLs, images, and documents. It uses Puppeteer
- * for advanced web scraping of JavaScript-heavy websites.
+ * Implements a hybrid web scraping strategy to efficiently handle both
+ * static and dynamic JavaScript-heavy websites.
  */
 
 // --- IMPORTS ---
-// Load environment variables from a .env file into process.env
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -16,7 +14,9 @@ const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@googl
 const admin = require('firebase-admin');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
-const puppeteer = require('puppeteer'); // For advanced web scraping
+const puppeteer = require('puppeteer'); // For advanced scraping
+const axios = require('axios'); // For simple, fast scraping
+const cheerio = require('cheerio'); // For parsing static HTML
 
 // --- INITIALIZATION ---
 const app = express();
@@ -61,34 +61,43 @@ const safetySettings = [
 
 // --- HELPER FUNCTIONS ---
 
-/**
- * Converts a base64 data URL into the format required by the Google Gemini API.
- * @param {string} base64String The base64-encoded data URL of the file.
- * @param {string} mimeType The MIME type of the file.
- * @returns {object} An object formatted for the Gemini API.
- */
 function fileToGenerativePart(base64String, mimeType) {
     return { inlineData: { data: base64String.split(',')[1], mimeType } };
 }
 
 /**
- * --- NEW: Advanced Web Scraper using Puppeteer ---
- * This function launches a headless Chrome browser to scrape a URL.
- * It waits for the page to fully load (including JavaScript) and extracts the main text content.
+ * --- METHOD 1: Simple & Fast Scraper (axios + cheerio) ---
+ * This is the primary method for scraping static websites.
  * @param {string} url The URL to scrape.
  * @returns {Promise<string>} A promise that resolves to the extracted text content.
  */
-async function fetchContentFromUrl(url) {
-    console.log(`Launching headless browser for URL: ${url}`);
+async function fetchContentWithAxios(url) {
+    try {
+        const { data } = await axios.get(url, { timeout: 10000 });
+        const $ = cheerio.load(data);
+        $('script, style, nav, footer, header, aside').remove();
+        let mainContent = $('article').text() || $('main').text() || $('body').text();
+        mainContent = mainContent.replace(/\s\s+/g, ' ').trim();
+        return mainContent;
+    } catch (error) {
+        console.log(`Axios scraping failed for ${url}: ${error.message}. Will try Puppeteer.`);
+        return ''; // Return empty string to signal failure and trigger fallback
+    }
+}
+
+/**
+ * --- METHOD 2: Advanced & Slow Scraper (Puppeteer) ---
+ * This is the fallback method for JavaScript-heavy websites.
+ * @param {string} url The URL to scrape.
+ * @returns {Promise<string>} A promise that resolves to the extracted text content.
+ */
+async function fetchContentWithPuppeteer(url) {
+    console.log(`Falling back to headless browser for URL: ${url}`);
     let browser = null;
     try {
-        browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
-        
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-
         const mainContent = await page.evaluate(() => {
             document.querySelectorAll('script, style, nav, footer, header, aside, form, button').forEach(el => el.remove());
             const article = document.querySelector('article');
@@ -97,27 +106,33 @@ async function fetchContentFromUrl(url) {
             if (main) return main.innerText;
             return document.body.innerText;
         });
-
-        const cleanedContent = mainContent.replace(/\s\s+/g, ' ').trim();
-        return cleanedContent.substring(0, 15000);
-
+        return mainContent.replace(/\s\s+/g, ' ').trim();
     } catch (error) {
-        console.error(`Error scraping URL ${url} with Puppeteer:`, error.message);
+        console.error(`Puppeteer scraping failed for ${url}:`, error.message);
         throw new Error("Failed to fetch dynamic content from URL. The page may be too complex or protected.");
     } finally {
-        if (browser) {
-            await browser.close();
-            console.log("Headless browser closed.");
-        }
+        if (browser) await browser.close();
     }
 }
 
 /**
- * A utility function that wraps a promise with a timeout.
- * @param {Promise} promise The promise to wrap.
- * @param {number} ms The timeout duration in milliseconds.
- * @returns {Promise} The wrapped promise.
+ * --- Hybrid Scraper Controller ---
+ * First tries the fast axios method. If it fails to get enough content,
+ * it uses the powerful puppeteer method as a fallback.
+ * @param {string} url The URL to scrape.
+ * @returns {Promise<string>} A promise that resolves to the extracted text content.
  */
+async function fetchContentFromUrl(url) {
+    let content = await fetchContentWithAxios(url);
+    
+    // If the fast method returned very little content, try the advanced method.
+    if (!content || content.length < 200) {
+        content = await fetchContentWithPuppeteer(url);
+    }
+    
+    return content.substring(0, 15000); // Truncate final content
+}
+
 const withTimeout = (promise, ms) => {
     const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error(`Operation timed out after ${ms / 1000} seconds.`)), ms)
