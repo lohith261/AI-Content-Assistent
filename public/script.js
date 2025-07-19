@@ -1,10 +1,12 @@
 /**
  * @file script.js
  * @description This file contains all the client-side JavaScript for the AI Content Assistant application.
- * It handles user interactions, API requests via the Fetch API with streaming, and dynamic UI updates.
+ * It handles user interactions, API requests via the Fetch API with streaming, and dynamic UI updates,
+ * including the interactive Aurora effect.
  */
 
 // --- DOM ELEMENT REFERENCES ---
+// Get references to all the necessary HTML elements to avoid repeated DOM lookups.
 const contentInput = document.getElementById('contentInput');
 const processBtn = document.getElementById('processBtn');
 const clearBtn = document.getElementById('clearBtn');
@@ -28,14 +30,23 @@ const filePreviewName = document.getElementById('filePreviewName');
 const clearFileBtn = document.getElementById('clearFileBtn');
 
 // --- GLOBAL VARIABLES ---
-let uploadedFile = null;
-const HISTORY_KEY = 'aiContentAssistantHistory';
+let uploadedFile = null; // Stores the currently uploaded file data (name, type, base64 content).
+const HISTORY_KEY = 'aiContentAssistantHistory'; // Key for storing history in the browser's localStorage.
 
 // --- HELPER FUNCTIONS ---
+
+/**
+ * Checks if a given string is a valid URL.
+ * @param {string} string The string to validate.
+ * @returns {boolean} True if the string is a valid URL, false otherwise.
+ */
 function isValidUrl(string) {
     try { new URL(string); return true; } catch (e) { return false; }
 }
 
+/**
+ * Resets the entire UI to its initial state, clearing all inputs and outputs.
+ */
 function clearContent() {
     contentInput.value = '';
     summaryOutput.innerHTML = '';
@@ -55,6 +66,12 @@ function clearContent() {
 }
 
 // --- CORE APPLICATION LOGIC ---
+
+/**
+ * Handles the click event for all copy buttons.
+ * It reads the content from the target element, copies it to the clipboard,
+ * and provides visual feedback to the user by toggling a 'copied' class.
+ */
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
         const targetId = button.dataset.target;
@@ -83,15 +100,24 @@ copyButtons.forEach(button => {
     });
 });
 
+/**
+ * Saves a completed analysis session to the browser's localStorage.
+ * @param {string} input The user's original text or URL input.
+ * @param {object} response The final parsed JSON response from the AI.
+ * @param {object | null} fileInfo Information about the file that was processed.
+ */
 function saveToHistory(input, response, fileInfo = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
     history.unshift(newEntry);
-    history = history.slice(0, 5);
+    history = history.slice(0, 5); // Keep only the last 5 entries
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     displayHistory();
 }
 
+/**
+ * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
+ */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -102,7 +128,7 @@ function displayHistory() {
     historyContainer.classList.remove('hidden');
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
-        historyItem.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200/50 text-slate-800 relative group cursor-pointer hover:bg-white/80 hover:border-purple-300 transition-all duration-200';
+        historyItem.className = 'glass-card bg-slate-50 p-3 rounded-lg border border-slate-200/50 text-slate-800 relative group cursor-pointer hover:bg-white/80 hover:border-purple-300 transition-all duration-200';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
         historyItem.innerHTML = `<p class="text-xs text-slate-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-700 truncate">${displayInput}</p>`;
         historyItem.dataset.index = index;
@@ -125,11 +151,17 @@ function displayHistory() {
     });
 }
 
+/**
+ * Clears all items from the history in localStorage and updates the UI.
+ */
 function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     displayHistory();
 }
 
+/**
+ * Main function that is triggered when the "Process Content" button is clicked.
+ */
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
@@ -144,10 +176,7 @@ processBtn.addEventListener('click', async () => {
     actionItemsOutput.innerHTML = '';
     nextStepsOutput.innerHTML = '';
     responseContainer.classList.remove('hidden', 'opacity-0');
-
-    // Remove animation classes from previous runs
     document.querySelectorAll('.animate-slide-in').forEach(el => el.classList.remove('animate-slide-in'));
-
 
     let fullResponseText = "";
     let historyInput = inputContent;
@@ -193,6 +222,10 @@ processBtn.addEventListener('click', async () => {
     }
 });
 
+/**
+ * Reads the streaming response from the backend.
+ * @param {Response} response The response object from the `fetch` API call.
+ */
 async function processStream(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -230,12 +263,15 @@ async function processStream(response) {
     }
 }
 
+/**
+ * Renders the final, complete JSON response from the AI into the UI.
+ * @param {object} finalResponse The fully parsed JSON object from the AI.
+ */
 function displayFinalResponse(finalResponse) {
-    // Add animation class to each card
     summaryOutput.closest('.glass-card').classList.add('animate-slide-in');
     actionItemsOutput.closest('.glass-card').classList.add('animate-slide-in');
     nextStepsOutput.closest('.glass-card').classList.add('animate-slide-in');
-
+    
     summaryOutput.textContent = finalResponse.summary || 'No summary generated.';
     
     actionItemsOutput.innerHTML = '';
@@ -264,18 +300,20 @@ function displayFinalResponse(finalResponse) {
     lucide.createIcons();
 }
 
+/**
+ * Resets the state of the "Process" button after a request is complete or fails.
+ */
 function resetButtonState() {
     loadingSpinner.classList.add('hidden');
     buttonText.textContent = 'Process Content';
     processBtn.disabled = false;
 }
 
-// --- EVENT LISTENERS ---
-clearBtn.addEventListener('click', clearContent);
-clearHistoryBtn.addEventListener('click', clearHistory);
-temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
-maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
-
+/**
+ * Shows a preview of the uploaded file.
+ * @param {string} name The name of the file.
+ * @param {string} type The MIME type of the file.
+ */
 function showFilePreview(name, type) {
     if (type.startsWith('image/')) {
         filePreviewName.innerHTML = `<i data-lucide="image" class="mr-2"></i> ${name}`;
@@ -289,6 +327,13 @@ function showFilePreview(name, type) {
     filePreview.classList.remove('hidden');
     lucide.createIcons();
 }
+
+
+// --- EVENT LISTENERS ---
+clearBtn.addEventListener('click', clearContent);
+clearHistoryBtn.addEventListener('click', clearHistory);
+temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
+maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
 
 fileUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
@@ -315,34 +360,26 @@ contentInput.addEventListener('input', () => {
     }
 });
 
-// --- NEW: Interactive Aurora Effect Logic ---
-
 /**
- * Attaches mouse tracking event listeners to all elements with the 'glass-card' class.
- * This function updates CSS custom properties (--mouse-x, --mouse-y) on the element,
- * which the CSS uses to position the radial gradient (the aurora glow).
+ * Attaches mouse tracking event listeners to all 'glass-card' elements for the Aurora effect.
  */
 function initializeAuroraEffect() {
     const cards = document.querySelectorAll('.glass-card');
     cards.forEach(card => {
         card.addEventListener('mousemove', (e) => {
-            // Get the position of the card relative to the viewport
             const rect = card.getBoundingClientRect();
-            // Calculate the mouse position relative to the card's top-left corner
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
-            // Set the CSS custom properties on the card element
             card.style.setProperty('--mouse-x', `${x}px`);
             card.style.setProperty('--mouse-y', `${y}px`);
         });
     });
 }
 
-
 // --- INITIALIZATION ---
-// When the page first loads, initialize history and the new aurora effect.
+// When the page first loads, initialize history, the aurora effect, and icons.
 document.addEventListener('DOMContentLoaded', () => {
     displayHistory();
     initializeAuroraEffect();
+    lucide.createIcons();
 });

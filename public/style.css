@@ -2,7 +2,7 @@
  * @file style.css
  * @description Custom stylesheet for the AI Content Assistant.
  * Includes styles for the animated background, glassmorphism UI,
- * and the new interactive Aurora effect.
+ * and the new interactive Aurora effect and icon animations.
  */
 
 /* Import the Inter font family */
@@ -35,37 +35,33 @@ body {
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease-in-out;
-    position: relative; /* Required for the ::before pseudo-element */
-    overflow: hidden;   /* Keeps the glow contained within the card */
+    position: relative;
+    overflow: hidden;
 }
 
-/* --- NEW: The Aurora Glow Effect --- */
 .glass-card::before {
     content: '';
     position: absolute;
-    /* Position the gradient based on CSS variables controlled by JavaScript */
     left: var(--mouse-x);
     top: var(--mouse-y);
-    width: 200px; /* Size of the glow */
+    width: 200px;
     height: 200px;
     background-image: radial-gradient(
         circle,
         rgba(255, 255, 255, 0.4) 0%,
         rgba(255, 255, 255, 0) 80%
     );
-    /* Center the gradient on the cursor */
     transform: translate(-50%, -50%);
-    opacity: 0; /* Hidden by default */
+    opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    pointer-events: none; /* Allows clicks to pass through the glow */
+    pointer-events: none;
 }
 
-/* When hovering over the card, make the glow visible */
 .glass-card:hover::before {
     opacity: 1;
 }
 
-/* --- Other styles remain the same --- */
+/* --- Animation for response cards appearing --- */
 @keyframes slide-in-fade-in {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -75,6 +71,25 @@ body {
     animation: slide-in-fade-in 0.5s ease-out forwards;
 }
 
+/* --- NEW: Icon Animation Styles --- */
+.copy-btn .copy-icon {
+    opacity: 1;
+    transform: scale(1);
+}
+.copy-btn .check-icon {
+    opacity: 0;
+    transform: scale(0);
+}
+.copy-btn.copied .copy-icon {
+    opacity: 0;
+    transform: scale(0);
+}
+.copy-btn.copied .check-icon {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Style for the "Copied!" feedback tooltip */
 .copy-btn .copy-feedback {
     position: absolute;
     top: -28px;
