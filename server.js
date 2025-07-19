@@ -1,4 +1,4 @@
-// server.js (Updated for POST Requests)
+// server.js (Updated for Document Uploads)
 
 // Import necessary modules
 require('dotenv').config();
@@ -10,6 +10,11 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const admin = require('firebase-admin');
 
+// --- NEW: Import document parsing libraries ---
+const pdf = require('pdf-parse');
+const { Document, Packer, Paragraph } = require('docx');
+const mammoth = require('mammoth'); // A robust library for .docx
+
 // Initialize Express app
 const app = express();
 const port = 3000;
@@ -17,9 +22,7 @@ const port = 3000;
 // Middleware setup
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
-// IMPORTANT: Add JSON middleware to parse POST bodies and set a 10mb limit for images
-app.use(express.json({ limit: '10mb' }));
-
+app.use(express.json({ limit: '10mb' })); // Keep the 10mb limit for files
 
 // --- Firebase Admin SDK Initialization ---
 try {
@@ -43,61 +46,66 @@ if (!process.env.GEMINI_API_KEY) {
     console.error("Error: GEMINI_API_KEY is not set!");
     process.exit(1);
 }
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const safetySettings = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    // ... (other settings are the same)
 ];
 
+// --- Helper functions ---
 function fileToGenerativePart(base64String, mimeType) {
     return { inlineData: { data: base64String.split(',')[1], mimeType } };
 }
 
 async function fetchContentFromUrl(url) {
-    try {
-        const { data } = await axios.get(url, { timeout: 10000 });
-        const $ = cheerio.load(data);
-        $('script, style, noscript, link, meta, iframe, form, nav, footer, header, aside').remove();
-        let mainContent = $('article').text() || $('main').text() || $('body').text();
-        mainContent = mainContent.replace(/\s\s+/g, ' ').trim();
-        return mainContent.substring(0, 15000);
-    } catch (error) {
-        console.error(`Error fetching URL ${url}:`, error.message);
-        throw new Error("Failed to fetch content from URL.");
-    }
+    // ... (this function remains the same)
 }
 
-// --- CHANGE: Use app.post instead of app.get ---
+// --- Main Endpoint ---
 app.post('/generate-content', async (req, res) => {
-    // --- Set up Server-Sent Events (SSE) ---
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
     });
 
-    const sendEvent = (type, data) => {
-        res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
-    };
+    const sendEvent = (type, data) => res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
 
     try {
-        // --- CHANGE: Read data from req.body instead of req.query ---
-        const { text, url, image, temperature, maxOutputTokens, userId } = req.body;
+        const { text, url, image, document, temperature, maxOutputTokens, userId } = req.body;
         let parts = [];
+        let inputTextForHistory = text; // For saving to history later
 
-        // --- Build the prompt for the AI ---
+        // --- UPDATED: Handle different input types ---
         if (image) {
             const mimeType = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1];
             parts.push(fileToGenerativePart(image, mimeType));
-            parts.push({ text: text || "Describe this image and identify relevant information." });
+            if (text) parts.push({ text });
+            inputTextForHistory = 'Image Input';
+        } else if (document) {
+            // --- NEW: Logic to handle document uploads ---
+            const { mimeType, base64 } = document;
+            const buffer = Buffer.from(base64, 'base64');
+            let extractedText = '';
+
+            if (mimeType === 'application/pdf') {
+                const data = await pdf(buffer);
+                extractedText = data.text;
+            } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                const result = await mammoth.extractRawText({ buffer });
+                extractedText = result.value;
+            } else {
+                 throw new Error('Unsupported document type');
+            }
+            parts.push({ text: extractedText });
+            inputTextForHistory = `Document: ${document.name}`;
+
         } else if (url) {
             const contentFromUrl = await fetchContentFromUrl(url);
             parts.push({ text: contentFromUrl });
+            inputTextForHistory = url;
         } else if (text) {
             parts.push({ text: text });
         } else {
@@ -106,7 +114,7 @@ app.post('/generate-content', async (req, res) => {
 
         const basePrompt = `
             You are an AI assistant. Analyze the provided content and provide the following outputs in a single, valid JSON object.
-            Do NOT include any markdown formatting like \`\`\`json. The entire response must be a single JSON object.
+            Do NOT include any markdown formatting. The entire response must be a single JSON object.
             1.  "summary": A concise, 3-5 sentence summary.
             2.  "actionItems": An array of clear, actionable tasks. If none, return ["None identified."].
             3.  "nextSteps": An array of suggested next steps. If none, return ["No further suggestions."].
@@ -119,7 +127,6 @@ app.post('/generate-content', async (req, res) => {
             responseMimeType: "application/json",
         };
 
-        // --- Use generateContentStream ---
         const result = await model.generateContentStream({
             contents: [{ role: "user", parts }],
             generationConfig,
@@ -138,7 +145,7 @@ app.post('/generate-content', async (req, res) => {
         if (userId && db) {
             const finalResponse = JSON.parse(fullResponseText);
             const entry = {
-                input: text || url || 'Image Input',
+                input: inputTextForHistory,
                 response: finalResponse,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             };

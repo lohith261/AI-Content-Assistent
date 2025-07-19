@@ -1,4 +1,4 @@
-// script.js (Updated for POST requests with fetch)
+// script.js (Updated for Document Uploads)
 
 // --- Get references to DOM elements ---
 const contentInput = document.getElementById('contentInput');
@@ -18,11 +18,11 @@ const temperatureInput = document.getElementById('temperatureInput');
 const temperatureValue = document.getElementById('temperatureValue');
 const maxTokensInput = document.getElementById('maxTokensInput');
 const maxTokensValue = document.getElementById('maxTokensValue');
-const imageUpload = document.getElementById('imageUpload');
-const imagePreview = document.getElementById('imagePreview');
-const imagePreviewImg = imagePreview.querySelector('img');
-const clearImageBtn = document.getElementById('clearImageBtn');
-let uploadedImageBase64 = null;
+const fileUpload = document.getElementById('fileUpload');
+const filePreview = document.getElementById('filePreview');
+const filePreviewName = document.getElementById('filePreviewName');
+const clearFileBtn = document.getElementById('clearFileBtn');
+let uploadedFile = null;
 
 // --- Helper Functions ---
 function isValidUrl(string) {
@@ -38,10 +38,12 @@ function clearContent() {
     processBtn.disabled = false;
     buttonText.textContent = 'Process Content';
     loadingSpinner.classList.add('hidden');
-    imageUpload.value = '';
-    uploadedImageBase64 = null;
-    imagePreview.classList.add('hidden');
-    imagePreviewImg.src = '#';
+    
+    fileUpload.value = '';
+    uploadedFile = null;
+    filePreview.classList.add('hidden');
+    filePreviewName.textContent = '';
+
     lucide.createIcons();
 }
 
@@ -76,9 +78,9 @@ copyButtons.forEach(button => {
 
 // --- Local Storage History ---
 const HISTORY_KEY = 'aiContentAssistantHistory';
-function saveToHistory(input, response, image = null) {
+function saveToHistory(input, response, fileInfo = null) {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    const newEntry = { timestamp: new Date().toISOString(), input, response, image };
+    const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
     history.unshift(newEntry);
     history = history.slice(0, 5);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -96,7 +98,7 @@ function displayHistory() {
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
         historyItem.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 relative group cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-all duration-200';
-        const displayInput = entry.input ? entry.input.substring(0, 100) + (entry.input.length > 100 ? '...' : '') : 'Image Input';
+        const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
         historyItem.innerHTML = `<p class="text-xs text-slate-500 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-700 truncate">${displayInput}</p>`;
         historyItem.dataset.index = index;
         historyList.appendChild(historyItem);
@@ -104,13 +106,12 @@ function displayHistory() {
             const entryToLoad = history[index];
             if (entryToLoad) {
                 contentInput.value = entryToLoad.input || '';
-                if (entryToLoad.image) {
-                    uploadedImageBase64 = entryToLoad.image;
-                    imagePreviewImg.src = entryToLoad.image;
-                    imagePreview.classList.remove('hidden');
+                if (entryToLoad.fileInfo) {
+                    uploadedFile = entryToLoad.fileInfo;
+                    showFilePreview(uploadedFile.name, uploadedFile.type);
                 } else {
-                    uploadedImageBase64 = null;
-                    imagePreview.classList.add('hidden');
+                    uploadedFile = null;
+                    filePreview.classList.add('hidden');
                 }
                 displayFinalResponse(entryToLoad.response);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -125,11 +126,11 @@ function clearHistory() {
 }
 clearHistoryBtn.addEventListener('click', clearHistory);
 
-// --- Main Process Button Logic (Using Fetch API) ---
+// --- Main Process Button Logic ---
 processBtn.addEventListener('click', async () => {
     const inputContent = contentInput.value.trim();
-    if (inputContent === '' && !uploadedImageBase64) {
-        alert('Please enter text, a URL, or upload an image.');
+    if (inputContent === '' && !uploadedFile) {
+        alert('Please enter text, a URL, or upload a file.');
         return;
     }
 
@@ -142,15 +143,26 @@ processBtn.addEventListener('click', async () => {
     responseContainer.classList.remove('hidden', 'opacity-0');
 
     let fullResponseText = "";
+    let historyInput = inputContent;
 
     try {
         const payload = {
             temperature: parseFloat(temperatureInput.value),
             maxOutputTokens: parseInt(maxTokensInput.value),
         };
-        if (uploadedImageBase64) {
-            payload.image = uploadedImageBase64;
-            payload.text = inputContent || "Describe this image.";
+
+        if (uploadedFile) {
+            historyInput = null; // Prioritize file over text for history
+            if (uploadedFile.type.startsWith('image/')) {
+                payload.image = uploadedFile.base64;
+                if (inputContent) payload.text = inputContent; // Allow text with image
+            } else {
+                payload.document = {
+                    name: uploadedFile.name,
+                    mimeType: uploadedFile.type,
+                    base64: uploadedFile.base64.split(',')[1]
+                };
+            }
         } else if (isValidUrl(inputContent)) {
             payload.url = inputContent;
         } else {
@@ -190,7 +202,7 @@ processBtn.addEventListener('click', async () => {
                     } else if (parsedData.type === 'final') {
                         const finalResponse = JSON.parse(fullResponseText);
                         displayFinalResponse(finalResponse);
-                        saveToHistory(inputContent || "Image Input", finalResponse, uploadedImageBase64);
+                        saveToHistory(historyInput, finalResponse, uploadedFile);
                         resetButtonState();
                     } else if (parsedData.type === 'error') {
                         throw new Error(parsedData.data.message);
@@ -246,32 +258,43 @@ clearBtn.addEventListener('click', clearContent);
 temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
 maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
 
-imageUpload.addEventListener('change', (event) => {
+function showFilePreview(name, type) {
+    if (type.startsWith('image/')) {
+        filePreviewName.innerHTML = `<i data-lucide="image" class="mr-2"></i> ${name}`;
+    } else if (type === 'application/pdf') {
+        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-red-500"></i> ${name}`;
+    } else if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        filePreviewName.innerHTML = `<i data-lucide="file-text" class="mr-2 text-blue-500"></i> ${name}`;
+    } else {
+        filePreviewName.innerHTML = `<i data-lucide="file" class="mr-2"></i> ${name}`;
+    }
+    filePreview.classList.remove('hidden');
+    lucide.createIcons();
+}
+
+fileUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
         contentInput.value = '';
         const reader = new FileReader();
         reader.onload = (e) => {
-            uploadedImageBase64 = e.target.result;
-            imagePreviewImg.src = e.target.result;
-            imagePreview.classList.remove('hidden');
+            uploadedFile = { name: file.name, type: file.type, base64: e.target.result };
+            showFilePreview(file.name, file.type);
         };
         reader.readAsDataURL(file);
     }
 });
 
-clearImageBtn.addEventListener('click', () => {
-    imageUpload.value = '';
-    uploadedImageBase64 = null;
-    imagePreview.classList.add('hidden');
-    imagePreviewImg.src = '#';
+clearFileBtn.addEventListener('click', () => {
+    fileUpload.value = '';
+    uploadedFile = null;
+    filePreview.classList.add('hidden');
 });
 
 contentInput.addEventListener('input', () => {
     if (contentInput.value.trim() !== '') {
-        clearImageBtn.click();
+        clearFileBtn.click();
     }
 });
 
-// Load history on page start
 document.addEventListener('DOMContentLoaded', displayHistory);

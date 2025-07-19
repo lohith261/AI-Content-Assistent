@@ -58,24 +58,28 @@
                 <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200">
                     <div>
                         <label for="contentInput" class="block text-slate-700 text-sm font-semibold mb-2">
-                            Enter Text, URL, or Upload an Image
+                            Enter Text or a URL
                         </label>
                         <textarea id="contentInput" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 ease-in-out text-slate-800 bg-slate-50" rows="8" placeholder="Paste your article, notes, or a website URL here..."></textarea>
                     </div>
 
-                    <div class="my-4 text-center text-sm text-slate-500">OR</div>
+                    <div class="my-4 text-center text-sm text-slate-500">OR UPLOAD A FILE</div>
 
                     <div>
-                        <input type="file" id="imageUpload" accept="image/*" class="w-full text-slate-700 text-sm
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-full file:border-0
-                            file:text-sm file:font-semibold
-                            file:bg-purple-50 file:text-purple-700
-                            hover:file:bg-purple-100 transition duration-200 ease-in-out cursor-pointer" aria-label="Upload image for analysis">
-                        <div id="imagePreview" class="mt-4 hidden relative w-full h-auto rounded-lg shadow-md overflow-hidden">
-                            <img src="#" alt="Image Preview" class="w-full h-auto object-cover">
-                            <button id="clearImageBtn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-1.5 hover:bg-opacity-75 transition">
-                                <i data-lucide="x" class="w-4 h-4"></i>
+                        <input type="file" id="fileUpload" 
+                               accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt" 
+                               class="w-full text-slate-700 text-sm
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded-full file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-purple-50 file:text-purple-700
+                                      hover:file:bg-purple-100 transition duration-200 ease-in-out cursor-pointer" 
+                               aria-label="Upload an image or document for analysis">
+                        
+                        <div id="filePreview" class="mt-4 hidden relative w-full h-auto bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <div id="filePreviewName" class="flex items-center text-slate-700 font-medium"></div>
+                            <button id="clearFileBtn" class="absolute top-3 right-3 text-slate-500 hover:text-slate-800 transition">
+                                <i data-lucide="x" class="w-5 h-5"></i>
                             </button>
                         </div>
                     </div>
@@ -96,39 +100,7 @@
                 
                 <div id="responseContainer" class="hidden opacity-0 transition-all duration-500 ease-in-out transform">
                     <div class="space-y-6">
-                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                            <h2 class="text-xl font-bold text-slate-800 mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="file-text" class="mr-2 text-blue-600"></i> Summary</span>
-                                <button class="copy-btn text-slate-500 hover:text-blue-600 transition duration-150 relative" data-target="summaryOutput">
-                                    <i data-lucide="copy" class="w-5 h-5"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <div id="summaryOutput" class="text-slate-700 leading-relaxed"></div>
                         </div>
-
-                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                            <h2 class="text-xl font-bold text-slate-800 mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="check-circle-2" class="mr-2 text-green-600"></i> Action Items</span>
-                                <button class="copy-btn text-slate-500 hover:text-blue-600 transition duration-150 relative" data-target="actionItemsOutput">
-                                    <i data-lucide="copy" class="w-5 h-5"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <ul id="actionItemsOutput" class="space-y-2"></ul>
-                        </div>
-
-                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                            <h2 class="text-xl font-bold text-slate-800 mb-3 flex items-center justify-between">
-                                <span class="flex items-center"><i data-lucide="lightbulb" class="mr-2 text-yellow-500"></i> Suggested Next Steps</span>
-                                <button class="copy-btn text-slate-500 hover:text-blue-600 transition duration-150 relative" data-target="nextStepsOutput">
-                                    <i data-lucide="copy" class="w-5 h-5"></i>
-                                    <span class="copy-feedback">Copied!</span>
-                                </button>
-                            </h2>
-                            <ul id="nextStepsOutput" class="space-y-2"></ul>
-                        </div>
-                    </div>
                 </div>
             </main>
         </div>
