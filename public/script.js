@@ -97,6 +97,10 @@ function saveToHistory(input, response, fileInfo = null) {
     displayHistory();
 }
 
+/**
+ * Reads the history from localStorage and dynamically builds the "Recent History" list in the UI.
+ * This function is updated to include the 'card-content' wrapper for proper styling.
+ */
 function displayHistory() {
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
@@ -107,11 +111,23 @@ function displayHistory() {
     historyContainer.classList.remove('hidden');
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
-        historyItem.className = 'glass-card bg-slate-800 p-3 rounded-lg border border-slate-700 relative group cursor-pointer hover:border-purple-500 transition-all duration-200';
+        // Set the main class for the card
+        historyItem.className = 'glass-card relative group cursor-pointer';
+        
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
-        historyItem.innerHTML = `<p class="text-xs text-slate-400 mb-2">${new Date(entry.timestamp).toLocaleString()}</p><p class="font-semibold text-slate-200 truncate">${displayInput}</p>`;
+        
+        // --- THIS IS THE FIX ---
+        // The content is now wrapped in a 'card-content' div to ensure it's visible.
+        historyItem.innerHTML = `
+            <div class="card-content p-3">
+                <p class="text-xs text-slate-400 mb-2">${new Date(entry.timestamp).toLocaleString()}</p>
+                <p class="font-semibold text-slate-200 truncate">${displayInput}</p>
+            </div>
+        `;
+        
         historyItem.dataset.index = index;
         historyList.appendChild(historyItem);
+
         historyItem.addEventListener('click', () => {
             const entryToLoad = history[index];
             if (entryToLoad) {
@@ -164,7 +180,7 @@ processBtn.addEventListener('click', async () => {
     try {
         const payload = {
             temperature: parseFloat(temperatureInput.value),
-            maxOutputTokens: parseInt(maxTokensInput.value),
+            maxOutputTokens: parseInt(maxOutputTokens),
         };
 
         if (uploadedFile) {
@@ -211,12 +227,8 @@ async function processStream(response) {
 
     while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-             if (buffer.length > 0) {
-                 // handle any remaining data in the buffer
-             }
-             break;
-        }
+        if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop();
