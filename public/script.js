@@ -49,30 +49,26 @@ const authToggleBtn = document.getElementById('authToggleBtn');
 // --- GLOBAL VARIABLES ---
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
-let isLoginMode = true; // To toggle between Login and Sign Up in the modal
+let isLoginMode = true;
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// --- FIREBASE INITIALIZATION (CORRECTED) ---
+// REMOVED the incompatible 'import' statements.
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
   authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
   projectId: "ai-content-assistant-5cd04",
-  storageBucket: "ai-content-assistant-5cd04.firebasestorage.app",
+  storageBucket: "ai-content-assistant-5cd04.appspot.com",
   messagingSenderId: "514653316408",
   appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
   measurementId: "G-7CR8K7DRHJ"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Initialize Firebase using the global 'firebase' object from the script tags.
+const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+
 
 // --- HELPER FUNCTIONS ---
 function isValidUrl(string) {
@@ -421,33 +417,24 @@ function initializeScrollAnimations() {
     animatedElements.forEach(el => observer.observe(el));
 }
 
-// --- NEW: AUTHENTICATION LOGIC ---
 
-/**
- * Toggles the auth modal between Login and Sign Up mode.
- */
+// --- AUTHENTICATION LOGIC ---
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
     authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
     authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
     authToggleText.textContent = isLoginMode ? "Don't have an account?" : "Already have an account?";
     authToggleBtn.textContent = isLoginMode ? 'Sign Up' : 'Login';
-    authError.classList.add('hidden'); // Hide any previous errors
+    authError.classList.add('hidden');
 }
 
-/**
- * Updates the UI based on the user's authentication state.
- * @param {firebase.User | null} user The current user object, or null if logged out.
- */
 function updateUIForAuthState(user) {
     if (user) {
-        // User is signed in
         authBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
         userInfo.classList.add('flex');
         userEmail.textContent = user.email;
     } else {
-        // User is signed out
         authBtn.classList.remove('hidden');
         userInfo.classList.add('hidden');
         userInfo.classList.remove('flex');
@@ -455,25 +442,20 @@ function updateUIForAuthState(user) {
     }
 }
 
-// Listen for authentication state changes
 auth.onAuthStateChanged(user => {
     updateUIForAuthState(user);
 });
 
-// Event listener for the main auth button (Login / Sign Up)
 authBtn.addEventListener('click', () => {
     authModal.classList.remove('hidden');
 });
 
-// Event listener to close the auth modal
 closeAuthModalBtn.addEventListener('click', () => {
     authModal.classList.add('hidden');
 });
 
-// Event listener for the button that toggles between login/signup
 authToggleBtn.addEventListener('click', toggleAuthMode);
 
-// Event listener for the form submission
 authForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = emailInput.value;
@@ -482,21 +464,18 @@ authForm.addEventListener('submit', async (e) => {
 
     try {
         if (isLoginMode) {
-            // Log in the user
             await auth.signInWithEmailAndPassword(email, password);
         } else {
-            // Create a new user account
             await auth.createUserWithEmailAndPassword(email, password);
         }
-        authModal.classList.add('hidden'); // Close modal on success
-        authForm.reset(); // Reset form fields
+        authModal.classList.add('hidden');
+        authForm.reset();
     } catch (error) {
         authError.textContent = error.message;
         authError.classList.remove('hidden');
     }
 });
 
-// Event listener for the logout button
 logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
 });
