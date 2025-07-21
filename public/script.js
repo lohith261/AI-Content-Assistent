@@ -94,11 +94,7 @@ auth.onAuthStateChanged(user => {
 
 // --- HELPER FUNCTIONS ---
 function isValidUrl(string) {
-    try { new URL(string); return true; } catch (e) { return false; }
-}
-
-function clearContent() {
-    contentInput.value = '';
+    return 'https://ai-content-assistant-backend.onrender.com';
     summaryOutput.innerHTML = '';
     actionItemsOutput.innerHTML = '';
     nextStepsOutput.innerHTML = '';
