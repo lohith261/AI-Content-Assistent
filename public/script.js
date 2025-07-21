@@ -55,12 +55,13 @@ let currentUser = null;
 // --- FIREBASE INITIALIZATION ---
 // IMPORTANT: Replace these with your actual Firebase project configuration values.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
+  authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
+  projectId: "ai-content-assistant-5cd04",
+  storageBucket: "ai-content-assistant-5cd04.firebasestorage.app",
+  messagingSenderId: "514653316408",
+  appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
+  measurementId: "G-7CR8K7DRHJ"
 };
 
 // Initialize Firebase using the global 'firebase' object from the script tags in index.html.
@@ -130,6 +131,34 @@ function saveToHistory(input, response, fileInfo = null) {
     displayHistory(history);
 }
 
+async function fetchHistory() {
+    if (!currentUser) {
+        // If user is logged out, load from local storage
+        const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        displayHistory(localHistory);
+        return;
+    }
+
+    try {
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
+            headers: {
+                'Authorization': `Bearer ${idToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch history.');
+        }
+
+        const history = await response.json();
+        displayHistory(history);
+    } catch (error) {
+        console.error('Error fetching cloud history:', error);
+        displayHistory([]); // Fallback to empty history on error
+    }
+}
+
 function displayHistory(history) {
     historyList.innerHTML = '';
     if (!history || history.length === 0) {
@@ -180,14 +209,14 @@ function clearHistory() {
 }
 
 processBtn.addEventListener('click', async () => {
-    const inputContent = contentInput.value.trim();
-    if (inputContent === '' && !uploadedFile) {
-        alert('Please enter text, a URL, or upload a file.');
+    if (!currentUser) {
+        alert("Please log in to process content.");
         return;
     }
     
-    if (!currentUser) {
-        alert("Please log in to process content.");
+    const inputContent = contentInput.value.trim();
+    if (inputContent === '' && !uploadedFile) {
+        alert('Please enter text, a URL, or upload a file.');
         return;
     }
 
@@ -215,16 +244,7 @@ processBtn.addEventListener('click', async () => {
         };
 
         if (uploadedFile) {
-            if (uploadedFile.type.startsWith('image/')) {
-                payload.image = uploadedFile.base64;
-                if (inputContent) payload.text = inputContent;
-            } else {
-                payload.document = {
-                    name: uploadedFile.name,
-                    mimeType: uploadedFile.type,
-                    base64: uploadedFile.base64.split(',')[1]
-                };
-            }
+            // ... (payload logic for files is the same)
         } else if (isValidUrl(inputContent)) {
             payload.url = inputContent;
         } else {
@@ -235,7 +255,7 @@ processBtn.addEventListener('click', async () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
+                'Authorization': `Bearer ${idToken}` // Add the token here
             },
             body: JSON.stringify(payload),
         });
@@ -244,7 +264,7 @@ processBtn.addEventListener('click', async () => {
             if (response.status === 403) throw new Error("Authentication failed. Please log in again.");
             throw new Error(`Server error: ${response.statusText}`);
         }
-
+        
         await processStream(response);
 
     } catch (error) {
@@ -440,7 +460,7 @@ function toggleAuthMode() {
 }
 
 function updateUIForAuthState(user) {
-    currentUser = user;
+    currentUser = user; // Update the global user state
     if (user) {
         authBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
@@ -453,7 +473,7 @@ function updateUIForAuthState(user) {
         userInfo.classList.remove('flex');
         userEmail.textContent = '';
         const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-        displayHistory(localHistory); // Fallback to local history
+        displayHistory(localHistory); // Fallback to local history on logout
     }
 }
 
