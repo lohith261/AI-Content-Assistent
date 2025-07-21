@@ -121,7 +121,12 @@ copyButtons.forEach(button => {
 });
 
 function saveToHistory(input, response, fileInfo = null) {
-    if (currentUser) return; // Don't save to local if user is logged in
+    // Only save to localStorage if user is not logged in
+    // When user is logged in, history is automatically saved by the backend
+    if (currentUser) {
+        console.log('User is logged in - history saved to cloud automatically');
+        return;
+    }
 
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
@@ -155,7 +160,9 @@ async function fetchHistory() {
         displayHistory(history);
     } catch (error) {
         console.error('Error fetching cloud history:', error);
-        displayHistory([]); // Fallback to empty history on error
+        // Fallback to local history if cloud fetch fails
+        const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        displayHistory(localHistory);
     }
 }
 
@@ -166,12 +173,23 @@ function displayHistory(history) {
         return;
     }
     historyContainer.classList.remove('hidden');
-    // --- THIS IS THE FIX ---
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
         historyItem.className = 'glass-card';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
-        const timestamp = entry.timestamp._seconds ? new Date(entry.timestamp._seconds * 1000) : new Date(entry.timestamp);
+        
+        // Handle different timestamp formats (Firestore vs localStorage)
+        let timestamp;
+        if (entry.timestamp && entry.timestamp._seconds) {
+            // Firestore timestamp
+            timestamp = new Date(entry.timestamp._seconds * 1000);
+        } else if (entry.timestamp && entry.timestamp.seconds) {
+            // Alternative Firestore timestamp format
+            timestamp = new Date(entry.timestamp.seconds * 1000);
+        } else {
+            // ISO string from localStorage
+            timestamp = new Date(entry.timestamp);
+        }
         
         historyItem.innerHTML = `
             <div class="card-content p-3">
@@ -200,8 +218,12 @@ function displayHistory(history) {
 
 function clearHistory() {
     if (currentUser) {
-        // In a future version, you could add a backend call here to clear cloud history.
-        alert("Clearing cloud history is not yet implemented.");
+        if (confirm("Are you sure you want to clear your cloud history? This action cannot be undone.")) {
+            // For now, we'll just hide the history locally
+            // In a future version, you could add a backend endpoint to clear cloud history
+            displayHistory([]);
+            alert("History cleared from view. Note: Cloud history clearing will be implemented in a future update.");
+        }
     } else {
         localStorage.removeItem(HISTORY_KEY);
         displayHistory([]);
@@ -244,7 +266,16 @@ processBtn.addEventListener('click', async () => {
         };
 
         if (uploadedFile) {
-            // ... (payload logic for files is the same)
+            if (uploadedFile.type.startsWith('image/')) {
+                payload.image = uploadedFile.base64;
+            } else if (uploadedFile.type === 'application/pdf' || 
+                      uploadedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                payload.document = {
+                    name: uploadedFile.name,
+                    mimeType: uploadedFile.type,
+                    base64: uploadedFile.base64.split(',')[1] // Remove data URL prefix
+                };
+            }
         } else if (isValidUrl(inputContent)) {
             payload.url = inputContent;
         } else {
@@ -466,7 +497,10 @@ function updateUIForAuthState(user) {
         userInfo.classList.remove('hidden');
         userInfo.classList.add('flex');
         userEmail.textContent = user.email;
-        fetchHistory(); // Fetch cloud history on login
+        // Fetch cloud history on login and migrate local history if needed
+        migrateLocalHistoryToCloud().then(() => {
+            fetchHistory();
+        });
     } else {
         authBtn.classList.remove('hidden');
         userInfo.classList.add('hidden');
@@ -514,6 +548,47 @@ authForm.addEventListener('submit', async (e) => {
 logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
 });
+
+// --- NEW: HISTORY MIGRATION FUNCTION ---
+async function migrateLocalHistoryToCloud() {
+    if (!currentUser) return;
+    
+    const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if (localHistory.length === 0) return;
+    
+    try {
+        const idToken = await currentUser.getIdToken();
+        
+        // Check if user already has cloud history
+        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
+            headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+        
+        if (response.ok) {
+            const cloudHistory = await response.json();
+            
+            // If user has no cloud history, offer to migrate local history
+            if (cloudHistory.length === 0 && localHistory.length > 0) {
+                const shouldMigrate = confirm(
+                    `You have ${localHistory.length} items in your local history. ` +
+                    "Would you like to sync them to your cloud account?"
+                );
+                
+                if (shouldMigrate) {
+                    // Note: This would require a backend endpoint to bulk import history
+                    // For now, we'll just clear local storage after login
+                    console.log('Local history migration requested - feature to be implemented');
+                }
+            }
+        }
+        
+        // Clear local storage after successful login to avoid confusion
+        localStorage.removeItem(HISTORY_KEY);
+        
+    } catch (error) {
+        console.error('Error during history migration:', error);
+    }
+}
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {

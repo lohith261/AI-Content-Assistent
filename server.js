@@ -231,12 +231,24 @@ app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
 
         if (userId && db) {
             const finalResponse = JSON.parse(fullResponseText);
+            
+            // Prepare the history entry
             const entry = {
                 input: inputTextForHistory,
                 response: finalResponse,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             };
+            
+            // Add file info if document was processed
+            if (document) {
+                entry.fileInfo = {
+                    name: document.name,
+                    type: document.mimeType
+                };
+            }
+            
             await db.collection('users').doc(userId).collection('history').add(entry);
+            console.log(`History saved for user: ${userId}`);
         }
 
     } catch (error) {
@@ -259,9 +271,18 @@ app.get('/history', verifyFirebaseToken, async (req, res) => {
     try {
         const userId = req.user.uid;
         const historyRef = db.collection('users').doc(userId).collection('history');
-        const snapshot = await historyRef.orderBy('timestamp', 'desc').limit(10).get();
+        const snapshot = await historyRef.orderBy('timestamp', 'desc').limit(20).get();
         
-        const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const history = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                input: data.input,
+                response: data.response,
+                timestamp: data.timestamp,
+                fileInfo: data.fileInfo || null
+            };
+        });
         res.status(200).json(history);
     } catch (error) {
         console.error("Error fetching history:", error);
