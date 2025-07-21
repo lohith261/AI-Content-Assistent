@@ -102,6 +102,24 @@ function isValidUrl(string) {
     processBtn.disabled = false;
     buttonText.textContent = 'Process Content';
     loadingSpinner.classList.add('hidden');
+function clearContent() {
+    contentInput.value = '';
+    summaryOutput.innerHTML = '';
+    actionItemsOutput.innerHTML = '';
+    nextStepsOutput.innerHTML = '';
+    responseContainer.classList.add('opacity-0', 'hidden');
+    processBtn.disabled = false;
+    buttonText.textContent = 'Process Content';
+    loadingSpinner.classList.add('hidden');
+    
+    fileUpload.value = '';
+    uploadedFile = null;
+    filePreview.classList.add('hidden');
+    filePreviewName.textContent = '';
+
+    lucide.createIcons();
+}
+
     
     fileUpload.value = '';
     uploadedFile = null;
