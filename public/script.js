@@ -52,8 +52,6 @@ const HISTORY_KEY = 'aiContentAssistantHistory';
 let isLoginMode = true;
 
 // --- FIREBASE INITIALIZATION (CORRECTED) ---
-// REMOVED the incompatible 'import' statements.
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
