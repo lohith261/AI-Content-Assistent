@@ -67,16 +67,22 @@ let currentActionItems = [];
 let selectedService = null;
 
 // --- FIREBASE INITIALIZATION ---
-// IMPORTANT: Replace these with your actual Firebase project configuration values.
+// IMPORTANT: You need to replace these with your actual Firebase project configuration values.
+// Get these from your Firebase Console > Project Settings > General > Your apps > Firebase SDK snippet
 const firebaseConfig = {
-  apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
-  authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
-  projectId: "ai-content-assistant-5cd04",
-  storageBucket: "ai-content-assistant-5cd04.firebasestorage.app",
-  messagingSenderId: "514653316408",
-  appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
-  measurementId: "G-7CR8K7DRHJ"
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
+
+// Check if Firebase config is properly set
+if (firebaseConfig.apiKey === "YOUR_FIREBASE_API_KEY") {
+  console.error("Firebase configuration not set. Please update the firebaseConfig object with your actual Firebase project values.");
+  alert("Firebase is not configured. Authentication features will not work. Please check the console for instructions.");
+}
 
 // Initialize Firebase using the global 'firebase' object from the script tags in index.html.
 const app = firebase.initializeApp(firebaseConfig);
