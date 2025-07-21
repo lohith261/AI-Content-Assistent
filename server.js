@@ -29,22 +29,27 @@ app.use(express.json({ limit: '10mb' }));
 // --- FIREBASE ADMIN SDK INITIALIZATION ---
 let firebaseInitialized = false;
 try {
-    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL) {
+    // Check if all required Firebase environment variables are present
+    const requiredVars = ['FIREBASE_PRIVATE_KEY', 'FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL'];
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+        console.error(`Missing Firebase environment variables: ${missingVars.join(', ')}`);
+        console.error('Please ensure your .env file contains all required Firebase credentials.');
+        console.error('The FIREBASE_PROJECT_ID must match the projectId in your frontend firebaseConfig.');
+    } else {
         // Validate and format the private key
         let privateKey = process.env.FIREBASE_PRIVATE_KEY;
         
-        // Check if the private key looks valid
-        if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
-            throw new Error('FIREBASE_PRIVATE_KEY does not appear to be a valid private key. Make sure it includes the full key with BEGIN and END markers.');
+        // Validate private key format
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') || !privateKey.includes('-----END PRIVATE KEY-----')) {
+            throw new Error('Invalid FIREBASE_PRIVATE_KEY format. Must include BEGIN and END markers.');
         }
         
         // Replace literal \n with actual newlines
         privateKey = privateKey.replace(/\\n/g, '\n');
         
-        // Additional validation - ensure the key has proper structure after formatting
-        if (!privateKey.includes('\n')) {
-            console.warn('Warning: Private key may not be properly formatted. Ensure \\n sequences are present in your .env file.');
-        }
+        console.log(`Initializing Firebase Admin SDK with project ID: ${process.env.FIREBASE_PROJECT_ID}`);
         
         admin.initializeApp({
             credential: admin.credential.cert({
@@ -55,17 +60,10 @@ try {
         });
         console.log('Firebase Admin SDK initialized successfully.');
         firebaseInitialized = true;
-    } else {
-        const missing = [];
-        if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
-        if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
-        if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
-        console.error(`Firebase environment variables are missing: ${missing.join(', ')}. Please check your .env file.`);
     }
 } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error);
-    console.error('Please verify your Firebase credentials in the .env file. Make sure FIREBASE_PRIVATE_KEY is formatted correctly with \\n for newlines.');
-    console.error('Example format: FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nYOUR_KEY_CONTENT\\n-----END PRIVATE KEY-----\\n"');
+    console.error('CRITICAL: Ensure FIREBASE_PROJECT_ID in .env matches the projectId in your frontend firebaseConfig!');
 }
 const db = firebaseInitialized ? admin.firestore() : null;
 
