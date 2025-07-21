@@ -83,6 +83,15 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
+// Add debugging for token generation
+auth.onAuthStateChanged(user => {
+    if (user) {
+        console.log('User signed in:', user.uid);
+        console.log('Project ID from frontend config:', firebaseConfig.projectId);
+    }
+    updateUIForAuthState(user);
+});
+
 // --- HELPER FUNCTIONS ---
 function isValidUrl(string) {
     try { new URL(string); return true; } catch (e) { return false; }

@@ -159,11 +159,17 @@ const verifyFirebaseToken = async (req, res, next) => {
 
     const idToken = authHeader.split('Bearer ')[1];
     try {
+        console.log('Attempting to verify token for project:', process.env.FIREBASE_PROJECT_ID);
+        console.log('Token length:', idToken.length);
+        
         const decodedToken = await admin.auth().verifyIdToken(idToken);
+        console.log('Token verified successfully for user:', decodedToken.uid);
         req.user = decodedToken; // Add user info to the request object
         next(); // Proceed to the next route handler
     } catch (error) {
-        console.error('Error verifying Firebase token:', error);
+        console.error('Error verifying Firebase token:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Full error:', error);
         return res.status(403).send('Unauthorized: Invalid token.');
     }
 };
