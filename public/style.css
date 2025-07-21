@@ -226,3 +226,26 @@ body {
     position: relative;
     z-index: 10;
 }
+
+/* --- Task Manager Integration Styles --- */
+#exportMenu {
+    transform-origin: top right;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+#taskManagerModal {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.export-option:hover {
+    transform: translateX(2px);
+}
+
+#confirmTaskManagerBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#confirmTaskManagerBtn:disabled:hover {
+    background-color: #7C3AED; /* Keep original purple color when disabled */
+}

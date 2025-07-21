@@ -565,6 +565,42 @@ logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
 });
 
+// Task Manager Integration Event Listeners
+exportActionsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('hidden');
+});
+
+// Close export menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!exportActionsBtn.contains(e.target) && !exportMenu.contains(e.target)) {
+        exportMenu.classList.add('hidden');
+    }
+});
+
+exportOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        const service = option.dataset.service;
+        exportMenu.classList.add('hidden');
+        
+        if (service === 'copy') {
+            copyActionItemsToClipboard();
+        } else {
+            showTaskManagerModal(service);
+        }
+    });
+});
+
+closeTaskManagerModalBtn.addEventListener('click', () => {
+    taskManagerModal.classList.add('hidden');
+});
+
+cancelTaskManagerBtn.addEventListener('click', () => {
+    taskManagerModal.classList.add('hidden');
+});
+
+confirmTaskManagerBtn.addEventListener('click', exportToTaskManager);
+
 // --- NEW: HISTORY MIGRATION FUNCTION ---
 async function migrateLocalHistoryToCloud() {
     if (!currentUser) return;
