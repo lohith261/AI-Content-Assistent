@@ -161,7 +161,7 @@ async function fetchHistory() {
 
     try {
         const idToken = await currentUser.getIdToken();
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
+        const response = await fetch('/history', {
             headers: {
                 'Authorization': `Bearer ${idToken}`
             }
@@ -297,7 +297,7 @@ processBtn.addEventListener('click', async () => {
             payload.text = inputContent;
         }
 
-        const response = await fetch(`https://ai-content-assistant-backend.onrender.com/generate-content`, {
+        const response = await fetch('/generate-content', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -738,7 +738,7 @@ async function migrateLocalHistoryToCloud() {
         const idToken = await currentUser.getIdToken();
         
         // Check if user already has cloud history
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
+        const response = await fetch('/history', {
             headers: { 'Authorization': `Bearer ${idToken}` }
         });
         
