@@ -28,6 +28,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '10mb' }));
 
 // --- FIREBASE ADMIN SDK INITIALIZATION ---
+let db = null;
 try {
     if (process.env.FIREBASE_PRIVATE_KEY) {
         admin.initializeApp({
@@ -37,12 +38,12 @@ try {
                 privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
             })
         });
+        db = admin.firestore();
         console.log('Firebase Admin SDK initialized successfully.');
     }
 } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error.message);
 }
-const db = admin.firestore();
 
 // --- GEMINI API CONFIGURATION ---
 if (!process.env.GEMINI_API_KEY) {
