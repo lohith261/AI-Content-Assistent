@@ -79,12 +79,6 @@ const firebaseConfig = {
   measurementId: "G-7CR8K7DRHJ"
 };
 
-// Check if Firebase config is properly set
-if (firebaseConfig.apiKey === "YOUR_FIREBASE_API_KEY") {
-  console.error("Firebase configuration not set. Please update the firebaseConfig object with your actual Firebase project values.");
-  alert("Firebase is not configured. Authentication features will not work. Please check the console for instructions.");
-}
-
 // Initialize Firebase using the global 'firebase' object from the script tags in index.html.
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
