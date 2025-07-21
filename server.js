@@ -1,8 +1,7 @@
 /**
  * @file server.js
  * @description The backend server for the AI Content Assistant.
- * Implements a hybrid web scraping strategy to efficiently handle both
- * static and dynamic JavaScript-heavy websites.
+ * Now includes middleware to verify Firebase authentication tokens for secure endpoints.
  */
 
 // --- IMPORTS ---
@@ -14,9 +13,9 @@ const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@googl
 const admin = require('firebase-admin');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
-const puppeteer = require('puppeteer'); // For advanced scraping
-const axios = require('axios'); // For simple, fast scraping
-const cheerio = require('cheerio'); // For parsing static HTML
+const puppeteer = require('puppeteer');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 // --- INITIALIZATION ---
 const app = express();
@@ -67,37 +66,6 @@ function fileToGenerativePart(base64String, mimeType) {
     return { inlineData: { data: base64String.split(',')[1], mimeType } };
 }
 
-// --- NEW: AUTHENTICATION MIDDLEWARE ---
-/**
- * Express middleware to verify the Firebase ID token sent from the client.
- * If the token is valid, it attaches the decoded user object to the request.
- * If not, it sends a 403 Forbidden error.
- */
-const verifyFirebaseToken = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(403).send('Unauthorized: No token provided.');
-    }
-
-    const idToken = authHeader.split('Bearer ')[1];
-
-    try {
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
-        req.user = decodedToken; // Add user info to the request object
-        next(); // Proceed to the next middleware or route handler
-    } catch (error) {
-        console.error('Error verifying Firebase token:', error);
-        return res.status(403).send('Unauthorized: Invalid token.');
-    }
-};
-
-/**
- * --- METHOD 1: Simple & Fast Scraper (axios + cheerio) ---
- * This is the primary method for scraping static websites.
- * @param {string} url The URL to scrape.
- * @returns {Promise<string>} A promise that resolves to the extracted text content.
- */
 async function fetchContentWithAxios(url) {
     try {
         const { data } = await axios.get(url, { timeout: 10000 });
@@ -108,16 +76,10 @@ async function fetchContentWithAxios(url) {
         return mainContent;
     } catch (error) {
         console.log(`Axios scraping failed for ${url}: ${error.message}. Will try Puppeteer.`);
-        return ''; // Return empty string to signal failure and trigger fallback
+        return '';
     }
 }
 
-/**
- * --- METHOD 2: Advanced & Slow Scraper (Puppeteer) ---
- * This is the fallback method for JavaScript-heavy websites.
- * @param {string} url The URL to scrape.
- * @returns {Promise<string>} A promise that resolves to the extracted text content.
- */
 async function fetchContentWithPuppeteer(url) {
     console.log(`Falling back to headless browser for URL: ${url}`);
     let browser = null;
@@ -142,22 +104,12 @@ async function fetchContentWithPuppeteer(url) {
     }
 }
 
-/**
- * --- Hybrid Scraper Controller ---
- * First tries the fast axios method. If it fails to get enough content,
- * it uses the powerful puppeteer method as a fallback.
- * @param {string} url The URL to scrape.
- * @returns {Promise<string>} A promise that resolves to the extracted text content.
- */
 async function fetchContentFromUrl(url) {
     let content = await fetchContentWithAxios(url);
-    
-    // If the fast method returned very little content, try the advanced method.
     if (!content || content.length < 200) {
         content = await fetchContentWithPuppeteer(url);
     }
-    
-    return content.substring(0, 15000); // Truncate final content
+    return content.substring(0, 15000);
 }
 
 const withTimeout = (promise, ms) => {
@@ -167,8 +119,41 @@ const withTimeout = (promise, ms) => {
     return Promise.race([promise, timeout]);
 };
 
+// --- NEW: AUTHENTICATION MIDDLEWARE ---
+/**
+ * Express middleware to verify the Firebase ID token sent from the client.
+ * If the token is valid, it attaches the decoded user object to the request.
+ * If not, it sends a 403 Forbidden error.
+ */
+const verifyFirebaseToken = async (req, res, next) => {
+    if (!firebaseInitialized) {
+        return res.status(503).send('Firebase Admin not initialized.');
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(403).send('Unauthorized: No token provided.');
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        req.user = decodedToken; // Add user info to the request object
+        next(); // Proceed to the next route handler
+    } catch (error) {
+        console.error('Error verifying Firebase token:', error);
+        return res.status(403).send('Unauthorized: Invalid token.');
+    }
+};
+
+
 // --- API ENDPOINTS ---
-app.post('/generate-content', async (req, res) => {
+
+/**
+ * @route POST /generate-content
+ * @description The main endpoint for content analysis. NOW SECURED.
+ */
+app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -178,8 +163,8 @@ app.post('/generate-content', async (req, res) => {
     const sendEvent = (type, data) => res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
 
     try {
-    	const userId = req.user.uid; 
-        const { text, url, image, document, temperature, maxOutputTokens, userId } = req.body;
+        const userId = req.user.uid; // Get user ID from the verified token
+        const { text, url, image, document, temperature, maxOutputTokens } = req.body;
         let parts = [];
         let inputTextForHistory = text;
 
@@ -194,12 +179,10 @@ app.post('/generate-content', async (req, res) => {
             let extractedText = '';
             
             if (mimeType === 'application/pdf') {
-                const parsingPromise = pdf(buffer);
-                const data = await withTimeout(parsingPromise, 30000);
+                const data = await withTimeout(pdf(buffer), 30000);
                 extractedText = data.text;
             } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                const parsingPromise = mammoth.extractRawText({ buffer });
-                const result = await withTimeout(parsingPromise, 30000);
+                const result = await withTimeout(mammoth.extractRawText({ buffer }), 30000);
                 extractedText = result.value;
             } else {
                  throw new Error('Unsupported document type');
@@ -244,7 +227,8 @@ app.post('/generate-content', async (req, res) => {
             sendEvent('chunk', { text: chunkText });
         }
         
-        // Save to the user's collection in Firestore
+        sendEvent('final', {});
+
         if (userId && db) {
             const finalResponse = JSON.parse(fullResponseText);
             const entry = {
@@ -252,20 +236,7 @@ app.post('/generate-content', async (req, res) => {
                 response: finalResponse,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             };
-            // Use the user's UID to create a user-specific collection
             await db.collection('users').doc(userId).collection('history').add(entry);
-        }
-        
-        sendEvent('final', {});
-
-        if (userId && db && admin.apps.length) {
-            const finalResponse = JSON.parse(fullResponseText);
-            const entry = {
-                input: inputTextForHistory,
-                response: finalResponse,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            };
-            await db.collection(`users/${userId}/history`).add(entry);
         }
 
     } catch (error) {
@@ -278,8 +249,7 @@ app.post('/generate-content', async (req, res) => {
 
 /**
  * @route GET /history
- * @description Fetches the processing history for the authenticated user.
- * NOW SECURED: Requires a valid Firebase ID token.
+ * @description Fetches the processing history for the authenticated user. NOW SECURED.
  */
 app.get('/history', verifyFirebaseToken, async (req, res) => {
     if (!db) {
@@ -298,6 +268,7 @@ app.get('/history', verifyFirebaseToken, async (req, res) => {
         res.status(500).json({ error: "Failed to fetch user history." });
     }
 });
+
 
 // --- SERVER STARTUP ---
 app.listen(port, () => {
