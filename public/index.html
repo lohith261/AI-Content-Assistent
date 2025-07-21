@@ -143,11 +143,52 @@
                            <div class="card-content p-6">
                                 <h2 class="text-xl font-bold text-white mb-3 flex items-center justify-between">
                                     <span class="flex items-center"><i data-lucide="check-circle-2" class="mr-2"></i> Action Items</span>
-                                    <button class="copy-btn text-slate-400 hover:text-white transition duration-150 relative" data-target="actionItemsOutput">
-                                        <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
-                                        <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
-                                        <span class="copy-feedback">Copied!</span>
-                                    </button>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="relative">
+                                            <button id="exportActionsBtn" class="text-slate-400 hover:text-white transition duration-150 flex items-center">
+                                                <i data-lucide="external-link" class="w-5 h-5 mr-1"></i>
+                                                <span class="text-sm">Export</span>
+                                            </button>
+                                            <div id="exportMenu" class="absolute top-8 right-0 w-48 glass-card hidden z-10">
+                                                <div class="card-content p-3 space-y-2">
+                                                    <button class="export-option w-full text-left p-2 rounded-lg hover:bg-white/10 flex items-center" data-service="trello">
+                                                        <div class="w-6 h-6 bg-blue-600 rounded mr-3 flex items-center justify-center">
+                                                            <span class="text-white text-xs font-bold">T</span>
+                                                        </div>
+                                                        Trello
+                                                    </button>
+                                                    <button class="export-option w-full text-left p-2 rounded-lg hover:bg-white/10 flex items-center" data-service="asana">
+                                                        <div class="w-6 h-6 bg-red-500 rounded mr-3 flex items-center justify-center">
+                                                            <span class="text-white text-xs font-bold">A</span>
+                                                        </div>
+                                                        Asana
+                                                    </button>
+                                                    <button class="export-option w-full text-left p-2 rounded-lg hover:bg-white/10 flex items-center" data-service="notion">
+                                                        <div class="w-6 h-6 bg-gray-800 rounded mr-3 flex items-center justify-center">
+                                                            <span class="text-white text-xs font-bold">N</span>
+                                                        </div>
+                                                        Notion
+                                                    </button>
+                                                    <button class="export-option w-full text-left p-2 rounded-lg hover:bg-white/10 flex items-center" data-service="todoist">
+                                                        <div class="w-6 h-6 bg-red-600 rounded mr-3 flex items-center justify-center">
+                                                            <span class="text-white text-xs font-bold">T</span>
+                                                        </div>
+                                                        Todoist
+                                                    </button>
+                                                    <hr class="border-slate-600 my-2">
+                                                    <button class="export-option w-full text-left p-2 rounded-lg hover:bg-white/10 flex items-center" data-service="copy">
+                                                        <i data-lucide="copy" class="w-5 h-5 mr-3 text-slate-400"></i>
+                                                        Copy to Clipboard
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="copy-btn text-slate-400 hover:text-white transition duration-150 relative" data-target="actionItemsOutput">
+                                            <i data-lucide="copy" class="copy-icon w-5 h-5 transition-all"></i>
+                                            <i data-lucide="check" class="check-icon w-5 h-5 text-green-400 absolute transition-all"></i>
+                                            <span class="copy-feedback">Copied!</span>
+                                        </button>
+                                    </div>
                                 </h2>
                                 <div id="actionItemsSkeleton" class="hidden space-y-3">
                                     <div class="flex items-center"><div class="skeleton w-6 h-6 rounded-full mr-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
@@ -210,6 +251,36 @@
                     <span id="authToggleText">Don't have an account?</span>
                     <button id="authToggleBtn" class="font-semibold text-purple-400 hover:underline">Sign Up</button>
                 </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Task Manager Integration Modal -->
+    <div id="taskManagerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="glass-card w-full max-w-lg relative">
+            <button id="closeTaskManagerModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <div class="card-content p-8">
+                <div class="flex items-center mb-6">
+                    <div id="serviceIcon" class="w-12 h-12 rounded-lg mr-4 flex items-center justify-center"></div>
+                    <div>
+                        <h2 id="taskManagerTitle" class="text-2xl font-bold text-white">Export to Service</h2>
+                        <p class="text-slate-400 text-sm">Send your action items to your task manager</p>
+                    </div>
+                </div>
+                
+                <div id="taskManagerContent" class="space-y-4">
+                    <!-- Content will be dynamically populated -->
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="cancelTaskManagerBtn" class="px-4 py-2 text-slate-400 hover:text-white transition">Cancel</button>
+                    <button id="confirmTaskManagerBtn" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        <span id="confirmBtnText">Export</span>
+                        <i id="confirmBtnSpinner" class="hidden animate-spin ml-2 w-4 h-4"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

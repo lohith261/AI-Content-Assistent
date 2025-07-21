@@ -45,12 +45,26 @@ const passwordInput = document.getElementById('passwordInput');
 const authSubmitBtn = document.getElementById('authSubmitBtn');
 const authToggleText = document.getElementById('authToggleText');
 const authToggleBtn = document.getElementById('authToggleBtn');
+const exportActionsBtn = document.getElementById('exportActionsBtn');
+const exportMenu = document.getElementById('exportMenu');
+const exportOptions = document.querySelectorAll('.export-option');
+const taskManagerModal = document.getElementById('taskManagerModal');
+const closeTaskManagerModalBtn = document.getElementById('closeTaskManagerModalBtn');
+const taskManagerTitle = document.getElementById('taskManagerTitle');
+const serviceIcon = document.getElementById('serviceIcon');
+const taskManagerContent = document.getElementById('taskManagerContent');
+const cancelTaskManagerBtn = document.getElementById('cancelTaskManagerBtn');
+const confirmTaskManagerBtn = document.getElementById('confirmTaskManagerBtn');
+const confirmBtnText = document.getElementById('confirmBtnText');
+const confirmBtnSpinner = document.getElementById('confirmBtnSpinner');
 
 // --- GLOBAL VARIABLES ---
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
 let isLoginMode = true;
 let currentUser = null;
+let currentActionItems = [];
+let selectedService = null;
 
 // --- FIREBASE INITIALIZATION ---
 // IMPORTANT: Replace these with your actual Firebase project configuration values.
@@ -370,6 +384,7 @@ function displayFinalResponse(finalResponse) {
     
     actionItemsOutput.innerHTML = '';
     if (finalResponse.actionItems && finalResponse.actionItems.length > 0 && finalResponse.actionItems[0] !== "None identified.") {
+        currentActionItems = finalResponse.actionItems; // Store for export functionality
         finalResponse.actionItems.forEach(item => {
             const li = document.createElement('li');
             li.className = "flex items-start p-2 -mx-2 rounded-lg hover:bg-white/5";
@@ -377,6 +392,7 @@ function displayFinalResponse(finalResponse) {
             actionItemsOutput.appendChild(li);
         });
     } else {
+        currentActionItems = []; // Clear if no action items
         actionItemsOutput.innerHTML = '<li class="text-slate-500 italic">No action items identified.</li>';
     }
 
