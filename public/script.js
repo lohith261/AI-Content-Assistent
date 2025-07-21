@@ -70,12 +70,13 @@ let selectedService = null;
 // IMPORTANT: You need to replace these with your actual Firebase project configuration values.
 // Get these from your Firebase Console > Project Settings > General > Your apps > Firebase SDK snippet
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
+  authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
+  projectId: "ai-content-assistant-5cd04",
+  storageBucket: "ai-content-assistant-5cd04.firebasestorage.app",
+  messagingSenderId: "514653316408",
+  appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
+  measurementId: "G-7CR8K7DRHJ"
 };
 
 // Check if Firebase config is properly set
