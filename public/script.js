@@ -50,25 +50,22 @@ const authToggleBtn = document.getElementById('authToggleBtn');
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
 let isLoginMode = true;
-let currentUser = null; // To store the current logged-in user object
+let currentUser = null;
 
-
-// --- FIREBASE INITIALIZATION (CORRECTED) ---
-// Your web app's Firebase configuration
+// --- FIREBASE INITIALIZATION ---
+// IMPORTANT: Replace these with your actual Firebase project configuration values.
 const firebaseConfig = {
-  apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
-  authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
-  projectId: "ai-content-assistant-5cd04",
-  storageBucket: "ai-content-assistant-5cd04.appspot.com",
-  messagingSenderId: "514653316408",
-  appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
-  measurementId: "G-7CR8K7DRHJ"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase using the global 'firebase' object from the script tags.
+// Initialize Firebase using the global 'firebase' object from the script tags in index.html.
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-
 
 // --- HELPER FUNCTIONS ---
 function isValidUrl(string) {
@@ -130,50 +127,21 @@ function saveToHistory(input, response, fileInfo = null) {
     history.unshift(newEntry);
     history = history.slice(0, 5);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    displayHistory(history); // Display the updated local history
+    displayHistory(history);
 }
 
-async function fetchHistory() {
-    if (!currentUser) {
-        // If user is logged out, load from local storage
-        const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-        displayHistory(localHistory);
-        return;
-    }
-
-    try {
-        const idToken = await currentUser.getIdToken();
-        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
-            headers: {
-                'Authorization': `Bearer ${idToken}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch history.');
-        }
-
-        const history = await response.json();
-        displayHistory(history);
-    } catch (error) {
-        console.error('Error fetching cloud history:', error);
-        // Fallback to empty history on error
-        displayHistory([]);
-    }
-}
-
-function displayHistory() {
+function displayHistory(history) {
     historyList.innerHTML = '';
     if (!history || history.length === 0) {
         historyContainer.classList.add('hidden');
         return;
     }
     historyContainer.classList.remove('hidden');
+    // --- THIS IS THE FIX ---
     history.forEach((entry, index) => {
         const historyItem = document.createElement('div');
         historyItem.className = 'glass-card';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
-        // Handle both ISO string (from local) and Firestore timestamp object
         const timestamp = entry.timestamp._seconds ? new Date(entry.timestamp._seconds * 1000) : new Date(entry.timestamp);
         
         historyItem.innerHTML = `
@@ -182,8 +150,6 @@ function displayHistory() {
                 <p class="font-semibold text-slate-200 truncate">${displayInput}</p>
             </div>
         `;
-        historyList.appendChild(historyItem);
-
         historyItem.addEventListener('click', () => {
             const entryToLoad = history[index];
             if (entryToLoad) {
@@ -199,23 +165,29 @@ function displayHistory() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
+        historyList.appendChild(historyItem);
     });
 }
 
 function clearHistory() {
-    localStorage.removeItem(HISTORY_KEY);
-    displayHistory();
+    if (currentUser) {
+        // In a future version, you could add a backend call here to clear cloud history.
+        alert("Clearing cloud history is not yet implemented.");
+    } else {
+        localStorage.removeItem(HISTORY_KEY);
+        displayHistory([]);
+    }
 }
 
 processBtn.addEventListener('click', async () => {
-	if (!currentUser) {
-        alert("Please log in to process content.");
-        return;
-    }
-    
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
         alert('Please enter text, a URL, or upload a file.');
+        return;
+    }
+    
+    if (!currentUser) {
+        alert("Please log in to process content.");
         return;
     }
 
@@ -235,18 +207,14 @@ processBtn.addEventListener('click', async () => {
     actionItemsOutput.classList.add('hidden');
     nextStepsOutput.classList.add('hidden');
 
-    let fullResponseText = "";
-    let historyInput = inputContent;
-
     try {
-    	const idToken = await currentUser.getIdToken();
+        const idToken = await currentUser.getIdToken();
         const payload = {
             temperature: parseFloat(temperatureInput.value),
             maxOutputTokens: parseInt(maxTokensInput.value),
         };
 
         if (uploadedFile) {
-            historyInput = null;
             if (uploadedFile.type.startsWith('image/')) {
                 payload.image = uploadedFile.base64;
                 if (inputContent) payload.text = inputContent;
@@ -267,7 +235,7 @@ processBtn.addEventListener('click', async () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}` // Add the token here
+                'Authorization': `Bearer ${idToken}`
             },
             body: JSON.stringify(payload),
         });
@@ -276,7 +244,7 @@ processBtn.addEventListener('click', async () => {
             if (response.status === 403) throw new Error("Authentication failed. Please log in again.");
             throw new Error(`Server error: ${response.statusText}`);
         }
-        
+
         await processStream(response);
 
     } catch (error) {
@@ -325,7 +293,7 @@ async function processStream(response) {
                 } else if (parsedData.type === 'final') {
                     const finalResponse = JSON.parse(fullResponseText);
                     displayFinalResponse(finalResponse);
-                    saveToHistory(contentInput.value.trim() || null, finalResponse, uploadedFile);
+                    fetchHistory(); // Refresh history from the cloud after a successful generation
                     resetButtonState();
                 } else if (parsedData.type === 'error') {
                     throw new Error(parsedData.data.message);
@@ -461,7 +429,6 @@ function initializeScrollAnimations() {
     animatedElements.forEach(el => observer.observe(el));
 }
 
-
 // --- AUTHENTICATION LOGIC ---
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
@@ -473,7 +440,7 @@ function toggleAuthMode() {
 }
 
 function updateUIForAuthState(user) {
-    currentUser = user; // Update the global user state
+    currentUser = user;
     if (user) {
         authBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
@@ -486,7 +453,7 @@ function updateUIForAuthState(user) {
         userInfo.classList.remove('flex');
         userEmail.textContent = '';
         const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-        displayHistory(localHistory); // Fallback to local history on logout
+        displayHistory(localHistory); // Fallback to local history
     }
 }
 
@@ -528,10 +495,9 @@ logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
 });
 
-
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    displayHistory();
+    displayHistory([]); // Start with an empty history
     
     const savedTheme = localStorage.getItem('aiAssistantTheme') || 'theme-midnight';
     setTheme(savedTheme);
