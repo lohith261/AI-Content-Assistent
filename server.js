@@ -28,7 +28,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '10mb' }));
 
 // --- FIREBASE ADMIN SDK INITIALIZATION ---
-let db = null;
+let firebaseInitialized = false;
 try {
     if (process.env.FIREBASE_PRIVATE_KEY) {
         admin.initializeApp({
@@ -38,12 +38,13 @@ try {
                 privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
             })
         });
-        db = admin.firestore();
         console.log('Firebase Admin SDK initialized successfully.');
+        firebaseInitialized = true;
     }
 } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error.message);
 }
+const db = firebaseInitialized ? admin.firestore() : null;
 
 // --- GEMINI API CONFIGURATION ---
 if (!process.env.GEMINI_API_KEY) {
@@ -65,6 +66,31 @@ const safetySettings = [
 function fileToGenerativePart(base64String, mimeType) {
     return { inlineData: { data: base64String.split(',')[1], mimeType } };
 }
+
+// --- NEW: AUTHENTICATION MIDDLEWARE ---
+/**
+ * Express middleware to verify the Firebase ID token sent from the client.
+ * If the token is valid, it attaches the decoded user object to the request.
+ * If not, it sends a 403 Forbidden error.
+ */
+const verifyFirebaseToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(403).send('Unauthorized: No token provided.');
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        req.user = decodedToken; // Add user info to the request object
+        next(); // Proceed to the next middleware or route handler
+    } catch (error) {
+        console.error('Error verifying Firebase token:', error);
+        return res.status(403).send('Unauthorized: Invalid token.');
+    }
+};
 
 /**
  * --- METHOD 1: Simple & Fast Scraper (axios + cheerio) ---
@@ -152,6 +178,7 @@ app.post('/generate-content', async (req, res) => {
     const sendEvent = (type, data) => res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
 
     try {
+    	const userId = req.user.uid; 
         const { text, url, image, document, temperature, maxOutputTokens, userId } = req.body;
         let parts = [];
         let inputTextForHistory = text;
@@ -217,6 +244,18 @@ app.post('/generate-content', async (req, res) => {
             sendEvent('chunk', { text: chunkText });
         }
         
+        // Save to the user's collection in Firestore
+        if (userId && db) {
+            const finalResponse = JSON.parse(fullResponseText);
+            const entry = {
+                input: inputTextForHistory,
+                response: finalResponse,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            };
+            // Use the user's UID to create a user-specific collection
+            await db.collection('users').doc(userId).collection('history').add(entry);
+        }
+        
         sendEvent('final', {});
 
         if (userId && db && admin.apps.length) {
@@ -234,6 +273,29 @@ app.post('/generate-content', async (req, res) => {
         sendEvent('error', { message: `An error occurred: ${error.message}` });
     } finally {
         res.end();
+    }
+});
+
+/**
+ * @route GET /history
+ * @description Fetches the processing history for the authenticated user.
+ * NOW SECURED: Requires a valid Firebase ID token.
+ */
+app.get('/history', verifyFirebaseToken, async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ error: "Firestore is not initialized." });
+    }
+    
+    try {
+        const userId = req.user.uid;
+        const historyRef = db.collection('users').doc(userId).collection('history');
+        const snapshot = await historyRef.orderBy('timestamp', 'desc').limit(10).get();
+        
+        const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json(history);
+    } catch (error) {
+        console.error("Error fetching history:", error);
+        res.status(500).json({ error: "Failed to fetch user history." });
     }
 });
 

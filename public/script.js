@@ -50,6 +50,8 @@ const authToggleBtn = document.getElementById('authToggleBtn');
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
 let isLoginMode = true;
+let currentUser = null; // To store the current logged-in user object
+
 
 // --- FIREBASE INITIALIZATION (CORRECTED) ---
 // Your web app's Firebase configuration
@@ -121,18 +123,48 @@ copyButtons.forEach(button => {
 });
 
 function saveToHistory(input, response, fileInfo = null) {
+    if (currentUser) return; // Don't save to local if user is logged in
+
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newEntry = { timestamp: new Date().toISOString(), input, response, fileInfo };
     history.unshift(newEntry);
     history = history.slice(0, 5);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    displayHistory();
+    displayHistory(history); // Display the updated local history
+}
+
+async function fetchHistory() {
+    if (!currentUser) {
+        // If user is logged out, load from local storage
+        const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        displayHistory(localHistory);
+        return;
+    }
+
+    try {
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch('https://ai-content-assistant-backend.onrender.com/history', {
+            headers: {
+                'Authorization': `Bearer ${idToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch history.');
+        }
+
+        const history = await response.json();
+        displayHistory(history);
+    } catch (error) {
+        console.error('Error fetching cloud history:', error);
+        // Fallback to empty history on error
+        displayHistory([]);
+    }
 }
 
 function displayHistory() {
-    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     historyList.innerHTML = '';
-    if (history.length === 0) {
+    if (!history || history.length === 0) {
         historyContainer.classList.add('hidden');
         return;
     }
@@ -141,13 +173,15 @@ function displayHistory() {
         const historyItem = document.createElement('div');
         historyItem.className = 'glass-card';
         const displayInput = entry.input || (entry.fileInfo ? entry.fileInfo.name : 'Unknown Input');
+        // Handle both ISO string (from local) and Firestore timestamp object
+        const timestamp = entry.timestamp._seconds ? new Date(entry.timestamp._seconds * 1000) : new Date(entry.timestamp);
+        
         historyItem.innerHTML = `
             <div class="card-content p-3">
-                <p class="text-xs text-slate-400 mb-2">${new Date(entry.timestamp).toLocaleString()}</p>
+                <p class="text-xs text-slate-400 mb-2">${timestamp.toLocaleString()}</p>
                 <p class="font-semibold text-slate-200 truncate">${displayInput}</p>
             </div>
         `;
-        historyItem.dataset.index = index;
         historyList.appendChild(historyItem);
 
         historyItem.addEventListener('click', () => {
@@ -174,6 +208,11 @@ function clearHistory() {
 }
 
 processBtn.addEventListener('click', async () => {
+	if (!currentUser) {
+        alert("Please log in to process content.");
+        return;
+    }
+    
     const inputContent = contentInput.value.trim();
     if (inputContent === '' && !uploadedFile) {
         alert('Please enter text, a URL, or upload a file.');
@@ -200,6 +239,7 @@ processBtn.addEventListener('click', async () => {
     let historyInput = inputContent;
 
     try {
+    	const idToken = await currentUser.getIdToken();
         const payload = {
             temperature: parseFloat(temperatureInput.value),
             maxOutputTokens: parseInt(maxTokensInput.value),
@@ -225,12 +265,18 @@ processBtn.addEventListener('click', async () => {
 
         const response = await fetch(`https://ai-content-assistant-backend.onrender.com/generate-content`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}` // Add the token here
+            },
             body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-
+        if (!response.ok) {
+            if (response.status === 403) throw new Error("Authentication failed. Please log in again.");
+            throw new Error(`Server error: ${response.statusText}`);
+        }
+        
         await processStream(response);
 
     } catch (error) {
@@ -427,16 +473,20 @@ function toggleAuthMode() {
 }
 
 function updateUIForAuthState(user) {
+    currentUser = user; // Update the global user state
     if (user) {
         authBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
         userInfo.classList.add('flex');
         userEmail.textContent = user.email;
+        fetchHistory(); // Fetch cloud history on login
     } else {
         authBtn.classList.remove('hidden');
         userInfo.classList.add('hidden');
         userInfo.classList.remove('flex');
         userEmail.textContent = '';
+        const localHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        displayHistory(localHistory); // Fallback to local history on logout
     }
 }
 
