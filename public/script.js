@@ -31,10 +31,48 @@ const nextStepsSkeleton = document.getElementById('nextStepsSkeleton');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const themePanel = document.getElementById('themePanel');
 const themeButtons = document.querySelectorAll('.theme-btn');
+const authBtn = document.getElementById('authBtn');
+const userInfo = document.getElementById('userInfo');
+const userEmail = document.getElementById('userEmail');
+const logoutBtn = document.getElementById('logoutBtn');
+const authModal = document.getElementById('authModal');
+const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
+const authTitle = document.getElementById('authTitle');
+const authError = document.getElementById('authError');
+const authForm = document.getElementById('authForm');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authToggleText = document.getElementById('authToggleText');
+const authToggleBtn = document.getElementById('authToggleBtn');
 
 // --- GLOBAL VARIABLES ---
 let uploadedFile = null;
 const HISTORY_KEY = 'aiContentAssistantHistory';
+let isLoginMode = true; // To toggle between Login and Sign Up in the modal
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCVKN6lf3bVJMGm5xnEOpzn-63fpCyc0QQ",
+  authDomain: "ai-content-assistant-5cd04.firebaseapp.com",
+  projectId: "ai-content-assistant-5cd04",
+  storageBucket: "ai-content-assistant-5cd04.firebasestorage.app",
+  messagingSenderId: "514653316408",
+  appId: "1:514653316408:web:6736feac1f4ad0faf38dcd",
+  measurementId: "G-7CR8K7DRHJ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = firebase.auth();
 
 // --- HELPER FUNCTIONS ---
 function isValidUrl(string) {
@@ -382,6 +420,86 @@ function initializeScrollAnimations() {
     }, { threshold: 0.1 });
     animatedElements.forEach(el => observer.observe(el));
 }
+
+// --- NEW: AUTHENTICATION LOGIC ---
+
+/**
+ * Toggles the auth modal between Login and Sign Up mode.
+ */
+function toggleAuthMode() {
+    isLoginMode = !isLoginMode;
+    authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+    authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
+    authToggleText.textContent = isLoginMode ? "Don't have an account?" : "Already have an account?";
+    authToggleBtn.textContent = isLoginMode ? 'Sign Up' : 'Login';
+    authError.classList.add('hidden'); // Hide any previous errors
+}
+
+/**
+ * Updates the UI based on the user's authentication state.
+ * @param {firebase.User | null} user The current user object, or null if logged out.
+ */
+function updateUIForAuthState(user) {
+    if (user) {
+        // User is signed in
+        authBtn.classList.add('hidden');
+        userInfo.classList.remove('hidden');
+        userInfo.classList.add('flex');
+        userEmail.textContent = user.email;
+    } else {
+        // User is signed out
+        authBtn.classList.remove('hidden');
+        userInfo.classList.add('hidden');
+        userInfo.classList.remove('flex');
+        userEmail.textContent = '';
+    }
+}
+
+// Listen for authentication state changes
+auth.onAuthStateChanged(user => {
+    updateUIForAuthState(user);
+});
+
+// Event listener for the main auth button (Login / Sign Up)
+authBtn.addEventListener('click', () => {
+    authModal.classList.remove('hidden');
+});
+
+// Event listener to close the auth modal
+closeAuthModalBtn.addEventListener('click', () => {
+    authModal.classList.add('hidden');
+});
+
+// Event listener for the button that toggles between login/signup
+authToggleBtn.addEventListener('click', toggleAuthMode);
+
+// Event listener for the form submission
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    authError.classList.add('hidden');
+
+    try {
+        if (isLoginMode) {
+            // Log in the user
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            // Create a new user account
+            await auth.createUserWithEmailAndPassword(email, password);
+        }
+        authModal.classList.add('hidden'); // Close modal on success
+        authForm.reset(); // Reset form fields
+    } catch (error) {
+        authError.textContent = error.message;
+        authError.classList.remove('hidden');
+    }
+});
+
+// Event listener for the logout button
+logoutBtn.addEventListener('click', async () => {
+    await auth.signOut();
+});
 
 
 // --- INITIALIZATION ---
