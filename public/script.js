@@ -226,6 +226,7 @@ processBtn.addEventListener('click', async () => {
         }
         
         await processStream(response);
+        await processStream(response, inputContent);
 
     } catch (error) {
         console.error('Request failed:', error);
@@ -234,7 +235,7 @@ processBtn.addEventListener('click', async () => {
     }
 });
 
-async function processStream(response) {
+async function processStream(response, inputContent) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
