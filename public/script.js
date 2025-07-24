@@ -78,15 +78,6 @@ function clearContent() {
     lucide.createIcons();
 }
 
-    
-    fileUpload.value = '';
-    uploadedFile = null;
-    filePreview.classList.add('hidden');
-    filePreviewName.textContent = '';
-
-    lucide.createIcons();
-}
-
 // --- CORE APPLICATION LOGIC ---
 copyButtons.forEach(button => {
     button.addEventListener('click', async () => {
