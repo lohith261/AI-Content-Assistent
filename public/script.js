@@ -196,9 +196,14 @@ processBtn.addEventListener('click', async () => {
             maxOutputTokens: parseInt(maxTokensInput.value),
         };
 
+        // Determine the correct input description for the history log
+        let inputForHistory = inputContent;
+
         if (uploadedFile) {
+            inputForHistory = uploadedFile.name; // Default to file name for history
             if (uploadedFile.type.startsWith('image/')) {
                 payload.image = uploadedFile.base64;
+                inputForHistory = 'Image Input'; // Use a generic description for images
             } else if (uploadedFile.type === 'application/pdf' || 
                       uploadedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                 payload.document = {
@@ -225,8 +230,8 @@ processBtn.addEventListener('click', async () => {
             throw new Error(`Server error: ${response.statusText}`);
         }
         
-        await processStream(response);
-        await processStream(response, inputContent);
+        // CORRECT: Call processStream only ONCE with the correct history text
+        await processStream(response, inputForHistory);
 
     } catch (error) {
         console.error('Request failed:', error);
