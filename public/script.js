@@ -102,6 +102,7 @@ function isValidUrl(string) {
     processBtn.disabled = false;
     buttonText.textContent = 'Process Content';
     loadingSpinner.classList.add('hidden');
+}
 function clearContent() {
     contentInput.value = '';
     summaryOutput.innerHTML = '';
