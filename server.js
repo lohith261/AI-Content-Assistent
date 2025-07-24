@@ -10,7 +10,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-const admin = require('firebase-admin');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
 const puppeteer = require('puppeteer');
@@ -24,49 +23,6 @@ const port = 3000;
 // --- MIDDLEWARE SETUP ---
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: '10mb' }));
-
-// --- FIREBASE ADMIN SDK INITIALIZATION ---
-let firebaseInitialized = false;
-try {
-    // Check if all required Firebase environment variables are present
-    const requiredVars = ['FIREBASE_PRIVATE_KEY', 'FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL'];
-    const missingVars = requiredVars.filter(varName => !process.env[varName]);
-    
-    if (missingVars.length > 0) {
-        console.error(`Missing Firebase environment variables: ${missingVars.join(', ')}`);
-        console.error('Please ensure your .env file contains all required Firebase credentials.');
-        console.error('The FIREBASE_PROJECT_ID must match the projectId in your frontend firebaseConfig.');
-    } else {
-        // Validate and format the private key
-        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-        
-        // Validate private key format
-        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') || !privateKey.includes('-----END PRIVATE KEY-----')) {
-            throw new Error('Invalid FIREBASE_PRIVATE_KEY format. Must include BEGIN and END markers.');
-        }
-        
-        // Replace literal \n with actual newlines
-        privateKey = privateKey.replace(/\\n/g, '\n');
-        
-        console.log(`Initializing Firebase Admin SDK with project ID: ${process.env.FIREBASE_PROJECT_ID}`);
-        
-        admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: privateKey,
-            })
-        });
-        console.log('Firebase Admin SDK initialized successfully.');
-        firebaseInitialized = true;
-    }
-} catch (error) {
-    console.error('Error initializing Firebase Admin SDK:', error);
-    console.error('CRITICAL: Ensure FIREBASE_PROJECT_ID in .env matches the projectId in your frontend firebaseConfig!');
-}
-const db = firebaseInitialized ? admin.firestore() : null;
-
 // --- GEMINI API CONFIGURATION ---
 if (!process.env.GEMINI_API_KEY) {
     console.error("Error: GEMINI_API_KEY is not set!");
@@ -140,48 +96,13 @@ const withTimeout = (promise, ms) => {
     );
     return Promise.race([promise, timeout]);
 };
-
-// --- NEW: AUTHENTICATION MIDDLEWARE ---
-/**
- * Express middleware to verify the Firebase ID token sent from the client.
- * If the token is valid, it attaches the decoded user object to the request.
- * If not, it sends a 403 Forbidden error.
- */
-const verifyFirebaseToken = async (req, res, next) => {
-    if (!firebaseInitialized) {
-        return res.status(503).send('Firebase Admin not initialized.');
-    }
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(403).send('Unauthorized: No token provided.');
-    }
-
-    const idToken = authHeader.split('Bearer ')[1];
-    try {
-        console.log('Attempting to verify token for project:', process.env.FIREBASE_PROJECT_ID);
-        console.log('Token length:', idToken.length);
-        
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
-        console.log('Token verified successfully for user:', decodedToken.uid);
-        req.user = decodedToken; // Add user info to the request object
-        next(); // Proceed to the next route handler
-    } catch (error) {
-        console.error('Error verifying Firebase token:', error.message);
-        console.error('Error code:', error.code);
-        console.error('Full error:', error);
-        return res.status(403).send('Unauthorized: Invalid token.');
-    }
-};
-
-
 // --- API ENDPOINTS ---
 
 /**
  * @route POST /generate-content
- * @description The main endpoint for content analysis. NOW SECURED.
+ * @description The main endpoint for content analysis.
  */
-app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
+app.post('/generate-content', async (req, res) => {
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -191,16 +112,13 @@ app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
     const sendEvent = (type, data) => res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
 
     try {
-        const userId = req.user.uid; // Get user ID from the verified token
         const { text, url, image, document, temperature, maxOutputTokens } = req.body;
         let parts = [];
-        let inputTextForHistory = text;
 
         if (image) {
             const mimeType = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1];
             parts.push(fileToGenerativePart(image, mimeType));
             if (text) parts.push({ text });
-            inputTextForHistory = 'Image Input';
         } else if (document) {
             const { mimeType, base64 } = document;
             const buffer = Buffer.from(base64, 'base64');
@@ -216,11 +134,9 @@ app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
                  throw new Error('Unsupported document type');
             }
             parts.push({ text: extractedText });
-            inputTextForHistory = `Document: ${document.name}`;
         } else if (url) {
             const contentFromUrl = await fetchContentFromUrl(url);
             parts.push({ text: contentFromUrl });
-            inputTextForHistory = url;
         } else if (text) {
             parts.push({ text: text });
         } else {
@@ -257,28 +173,6 @@ app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
         
         sendEvent('final', {});
 
-        if (userId && db) {
-            const finalResponse = JSON.parse(fullResponseText);
-            
-            // Prepare the history entry
-            const entry = {
-                input: inputTextForHistory,
-                response: finalResponse,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            };
-            
-            // Add file info if document was processed
-            if (document) {
-                entry.fileInfo = {
-                    name: document.name,
-                    type: document.mimeType
-                };
-            }
-            
-            await db.collection('users').doc(userId).collection('history').add(entry);
-            console.log(`History saved for user: ${userId}`);
-        }
-
     } catch (error) {
         console.error("Error during content generation:", error);
         sendEvent('error', { message: `An error occurred: ${error.message}` });
@@ -286,38 +180,6 @@ app.post('/generate-content', verifyFirebaseToken, async (req, res) => {
         res.end();
     }
 });
-
-/**
- * @route GET /history
- * @description Fetches the processing history for the authenticated user. NOW SECURED.
- */
-app.get('/history', verifyFirebaseToken, async (req, res) => {
-    if (!db) {
-        return res.status(500).json({ error: "Firestore is not initialized." });
-    }
-    
-    try {
-        const userId = req.user.uid;
-        const historyRef = db.collection('users').doc(userId).collection('history');
-        const snapshot = await historyRef.orderBy('timestamp', 'desc').limit(20).get();
-        
-        const history = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                input: data.input,
-                response: data.response,
-                timestamp: data.timestamp,
-                fileInfo: data.fileInfo || null
-            };
-        });
-        res.status(200).json(history);
-    } catch (error) {
-        console.error("Error fetching history:", error);
-        res.status(500).json({ error: "Failed to fetch user history." });
-    }
-});
-
 
 // --- SERVER STARTUP ---
 app.listen(port, () => {
