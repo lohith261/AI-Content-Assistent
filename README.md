@@ -31,6 +31,7 @@ The backend is built with Node.js/Express and features a hybrid web scraper for 
 | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
 | **Frontend** | `HTML5`, `Tailwind CSS` (via CDN), `Vanilla JavaScript`, `Lucide Icons`                                                                   |
 | **Backend** | `Node.js`, `Express.js`, `@google/generative-ai`, `axios`, `cheerio`, **`puppeteer`**, `cors`, `dotenv`, `firebase-admin`, **`pdf-parse`**, **`mammoth`** |
+| **Testing** | `Cypress` (for End-to-End Testing)                                                                              |
 | **Platform** | Deployed on **Vercel** (Frontend) and **Render** (Backend)                                                                              |
 
 ### 📂 Project Structure
@@ -38,6 +39,8 @@ The backend is built with Node.js/Express and features a hybrid web scraper for 
 * `/` (root)
     * `.env`: Environment variables (local setup)
     * `.gitignore`: Files to be ignored by Git
+    * `cypress/`: Cypress E2E test files and fixtures
+    * `cypress.config.js`: Cypress configuration file
     * `node_modules/`: Node.js dependencies
     * `public/`: All frontend static files
         * `index.html`: Main application page
@@ -99,6 +102,26 @@ npm start
 
 You will see a message that the server is listening on port 3000. Now, open your browser and navigate to:
 **[http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)**
+
+### ✅ Testing the Application
+
+This project uses Cypress for End-to-End (E2E) testing to ensure the application works as expected from a user's perspective.
+
+How to Run the Tests:
+
+**1. Start the local server (if it's not already running):**
+
+```bash
+npm start
+```
+
+**2. Open Cypress: In a new terminal window, run the following command to open the Cypress test runner:**
+
+```bash
+npx cypress open
+```
+
+**3. Run the tests: The Cypress window will appear. Click on the `content_processing.cy.js` spec file to run all the E2E tests. You can watch the tests execute in real-time in the browser window that Cypress opens.**
 
 ### 🚀 Future Enhancements
 

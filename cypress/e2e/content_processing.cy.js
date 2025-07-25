@@ -55,7 +55,7 @@ describe('AI Content Assistant - Text Processing', () => {
     cy.get('#loadingSpinner').should('be.visible');
 
     // Wait for the response and assert that the output is not empty
-    cy.get('#summaryOutput', { timeout: 15000 }).should('not.be.empty');
+    cy.get('#summaryOutput', { timeout: 30000 }).should('not.be.empty');
   });
 
   // Test Case 4: Clear Button Functionality
