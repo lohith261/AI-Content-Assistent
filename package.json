@@ -22,5 +22,8 @@
     "pdf-parse": "^1.1.1",
     "puppeteer": "^24.14.0"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "cypress": "^14.5.2"
+  }
 }

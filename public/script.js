@@ -357,16 +357,36 @@ clearHistoryBtn.addEventListener('click', clearHistory);
 temperatureInput.addEventListener('input', () => { temperatureValue.textContent = temperatureInput.value; });
 maxTokensInput.addEventListener('input', () => { maxTokensValue.textContent = maxTokensInput.value; });
 
+
 fileUpload.addEventListener('change', (event) => {
     const file = event.target.files[0];
-    if (file) {
-        contentInput.value = '';
-        const reader = new FileReader();
+    if (!file) return;
+
+    contentInput.value = ''; // Clear the textarea for new input
+    const reader = new FileReader();
+
+    // Check the file type to decide how to read it
+    if (file.type.startsWith('image/') || file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // For images, PDFs, and DOCX, read as Base64 for backend processing
         reader.onload = (e) => {
             uploadedFile = { name: file.name, type: file.type, base64: e.target.result };
             showFilePreview(file.name, file.type);
         };
         reader.readAsDataURL(file);
+    } else if (file.type === 'text/plain') {
+        // *** NEW: For plain text files, read the content and put it in the textarea ***
+        reader.onload = (e) => {
+            contentInput.value = e.target.result;
+            // Clear the file upload state, as we are now treating it as a text submission
+            uploadedFile = null;
+            fileUpload.value = '';
+            filePreview.classList.add('hidden');
+        };
+        reader.readAsText(file); // Read the file as plain text
+    } else {
+        // Handle unsupported file types
+        alert(`Unsupported file type: ${file.type}. Please upload an image, PDF, DOCX, or TXT file.`);
+        fileUpload.value = ''; // Reset the input
     }
 });
 

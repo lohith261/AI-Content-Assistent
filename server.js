@@ -1,7 +1,6 @@
 /**
  * @file server.js
  * @description The backend server for the AI Content Assistant.
- * Now includes middleware to verify Firebase authentication tokens for secure endpoints.
  */
 
 // --- IMPORTS ---
