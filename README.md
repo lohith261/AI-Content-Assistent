@@ -3,7 +3,7 @@
 
 # 🚀 AI Content Assistant 🚀
 
-An intelligent web application powered by the Google Gemini 1.5 Flash model. This tool serves as a powerful productivity assistant, capable of analyzing content from multiple sources—including text, website URLs, images, and local documents—to provide you with concise summaries, actionable tasks, and insightful next steps.
+An intelligent web application powered by the Google Gemini 2.5 Flash model. This tool serves as a powerful productivity assistant, capable of analyzing content from multiple sources—including text, website URLs, images, and local documents—to provide you with concise summaries, actionable tasks, and insightful next steps.
 
 The backend is built with Node.js/Express and features a hybrid web scraper for maximum compatibility. The frontend is a clean, responsive vanilla JS application with a modern, interactive, and customizable UI.
 
